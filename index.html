@@ -1,26 +1,261 @@
-<div id="FX_ROOT">
-  <style>
-    #FX_ROOT{
-      position:relative !important;
-      width:100% !important;
-      height:100% !important;
-      min-width:100% !important;
-      min-height:100% !important;
-      overflow:hidden !important;
-      background:transparent !important;
-    }
-    /* ВАЖНО: если Genially заворачивает внутрь — растягиваем всё что можно */
-    #FX_ROOT, #FX_ROOT *{ box-sizing:border-box; }
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,height=device-height,initial-scale=1.0"/>
+<title>Редактор «Найди персонажа»</title>
+<style>
+  :root{
+    --bg1:#0d1220; --bg2:#0a0f1b;
+    --panel: rgba(14,18,34,.80);
+    --stroke: rgba(255,255,255,.12);
+    --text: rgba(255,255,255,.92);
+    --muted: rgba(255,255,255,.70);
+    --shadow: 0 22px 70px rgba(0,0,0,.35);
+    --radius: 18px;
+    --blue:#2d6cff; --green:#22c55e; --gray:rgba(255,255,255,.10);
+  }
+  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:transparent}
+  body{
+    background:
+      radial-gradient(900px 600px at 20% 15%, rgba(70,110,255,.22), transparent 60%),
+      radial-gradient(900px 600px at 85% 35%, rgba(130,255,220,.13), transparent 58%),
+      linear-gradient(180deg, var(--bg1), var(--bg2));
+    color:var(--text); overflow:hidden;
+  }
+  .app{position:fixed;inset:0;display:grid;grid-template-columns:360px 1fr;gap:14px;padding:14px;box-sizing:border-box}
+  .panel{
+    background:var(--panel); border:1px solid var(--stroke); border-radius:var(--radius);
+    box-shadow:var(--shadow); backdrop-filter:blur(10px);
+    padding:14px; overflow:auto;
+  }
+  .stageWrap{
+    position:relative; border-radius:var(--radius); overflow:hidden;
+    border:1px solid var(--stroke); box-shadow:var(--shadow);
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,.04) 0, rgba(255,255,255,.04) 8px, rgba(255,255,255,.02) 8px, rgba(255,255,255,.02) 16px);
+  }
+  h1{font-size:18px;margin:0 0 8px 0}
+  .hint{font-size:12px;line-height:1.35;color:var(--muted);margin:0 0 12px 0}
+  .field{margin:10px 0}
+  label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px 0}
+  input[type="text"], input[type="number"], textarea, select{
+    width:100%; box-sizing:border-box;
+    padding:10px 10px;
+    border-radius:12px;
+    border:1px solid var(--stroke);
+    background:rgba(0,0,0,.25);
+    color:var(--text);
+    outline:none;
+  }
+  textarea{min-height:72px;resize:vertical}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .sliderRow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+  input[type="range"]{width:100%}
+  .pill{
+    font-size:12px; color:var(--text);
+    padding:6px 10px; border-radius:999px;
+    border:1px solid var(--stroke);
+    background:rgba(0,0,0,.25);
+    min-width:70px; text-align:center;
+  }
+  .btnRow{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+  button{
+    border:0; border-radius:12px; padding:10px 12px;
+    color:var(--text); cursor:pointer; font-weight:800;
+    background:var(--gray);
+  }
+  .btnBlue{background:var(--blue)}
+  .btnGreen{background:var(--green)}
+  button:active{transform:translateY(1px)}
+  .note{font-size:12px;color:var(--muted);margin-top:8px}
+  .codeBox{
+    width:100%; min-height:240px; margin-top:10px;
+    font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size:12px; line-height:1.35;
+  }
+  .toast{
+    position:fixed; left:50%; bottom:18px; transform:translateX(-50%);
+    background:rgba(0,0,0,.65);
+    border:1px solid rgba(255,255,255,.14);
+    padding:10px 14px; border-radius:999px;
+    color:rgba(255,255,255,.94); font-size:13px;
+    backdrop-filter:blur(10px);
+    box-shadow:0 18px 50px rgba(0,0,0,.35);
+    opacity:0; pointer-events:none; transition:opacity .2s ease;
+    z-index:9999999;
+  }
+  .toast.show{opacity:1}
+  .topRight{
+    position:absolute; right:12px; top:12px; z-index:10;
+    background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.12);
+    border-radius:12px; padding:8px 10px; font-size:12px; color:rgba(255,255,255,.8);
+    backdrop-filter: blur(8px);
+  }
+</style>
+</head>
+<body>
 
-    .fx_prog{
+<div class="app">
+  <div class="panel">
+    <h1>Редактор «Найди персонажа»</h1>
+    <p class="hint">
+      Это <b>редактор</b> (панель слева) + <b>предпросмотр</b> (справа).<br>
+      Нажми «Получить код» → вставь результат в Genially (HTML/Embed).
+    </p>
+
+    <div class="field">
+      <label>URL картинки персонажа (можно оставить пустым)</label>
+      <input id="imgUrl" type="text" placeholder="https://.../image.png"/>
+      <div class="note">Если пусто — возьмём файл <b>babushka_2.png</b> рядом с index.html</div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Размер (px)</label>
+        <div class="sliderRow">
+          <input id="size" type="range" min="24" max="180" value="46"/>
+          <div class="pill"><span id="sizeVal">46</span> px</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Количество находок (раундов)</label>
+        <input id="rounds" type="number" min="1" max="50" value="7"/>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Отступ от краёв (px)</label>
+        <input id="pad" type="number" min="0" max="240" value="12"/>
+      </div>
+      <div class="field">
+        <label>Пауза между раундами (мс)</label>
+        <input id="gap" type="number" min="0" max="5000" value="200"/>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Анимация появления</label>
+        <select id="anim">
+          <option value="none">без анимации</option>
+          <option value="softfade" selected>soft fade (медленно)</option>
+          <option value="fade">fade</option>
+          <option value="pop">pop</option>
+          <option value="slide">slide</option>
+          <option value="wiggle">wiggle</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Длительность анимации (мс)</label>
+        <input id="dur" type="number" min="0" max="5000" value="1100"/>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Инструкция (плашка сверху по центру)</label>
+      <input id="task" type="text" value="Найди бабочку и нажми на неё!"/>
+    </div>
+
+    <div class="field">
+      <label>Текст в конце игры</label>
+      <textarea id="endText">Молодец! Приходи играть ещё раз 😊</textarea>
+    </div>
+
+    <div class="btnRow">
+      <button class="btnBlue" id="btnCode">Получить код</button>
+      <button class="btnGreen" id="btnCopy">Копировать код</button>
+      <button id="btnReset">Сброс</button>
+    </div>
+
+    <div class="field">
+      <label>HTML-код для Genially (DIV + STYLE + SCRIPT)</label>
+      <textarea class="codeBox" id="out" placeholder="Нажми «Получить код»"></textarea>
+      <div class="note">
+        В Genially вставляй именно этот код (не ссылку на редактор).
+      </div>
+    </div>
+  </div>
+
+  <div class="stageWrap">
+    <div class="topRight">Предпросмотр</div>
+    <div id="PREVIEW_ROOT" style="position:absolute; inset:0;"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Скопировано ✅</div>
+
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const ui = {
+    imgUrl: $('imgUrl'),
+    size: $('size'),
+    sizeVal: $('sizeVal'),
+    rounds: $('rounds'),
+    pad: $('pad'),
+    gap: $('gap'),
+    anim: $('anim'),
+    dur: $('dur'),
+    task: $('task'),
+    endText: $('endText'),
+    out: $('out'),
+    btnCode: $('btnCode'),
+    btnCopy: $('btnCopy'),
+    btnReset: $('btnReset'),
+    toast: $('toast'),
+    preview: $('PREVIEW_ROOT'),
+  };
+
+  // ✅ дефолт: локальная картинка (рядом с index.html)
+  const defaultLocal = new URL('./babushka_2.png', location.href).href;
+
+  function toast(msg){
+    ui.toast.textContent = msg;
+    ui.toast.classList.add('show');
+    setTimeout(()=>ui.toast.classList.remove('show'), 1100);
+  }
+
+  function cfg(){
+    return {
+      url: (ui.imgUrl.value || '').trim() || defaultLocal,
+      size: parseInt(ui.size.value,10)||46,
+      rounds: Math.max(1, parseInt(ui.rounds.value,10)||7),
+      pad: Math.max(0, parseInt(ui.pad.value,10)||12),
+      gap: Math.max(0, parseInt(ui.gap.value,10)||200),
+      anim: ui.anim.value || 'softfade',
+      dur: Math.max(0, parseInt(ui.dur.value,10)||1100),
+      task: (ui.task.value||'').trim() || 'Найди персонажа!',
+      endText: (ui.endText.value||'').trim() || 'Молодец!'
+    };
+  }
+
+  // экранирование для template string
+  function safeTpl(s){
+    return String(s)
+      .replace(/\\/g,'\\\\')
+      .replace(/`/g,'\\`')
+      .replace(/\$\{/g,'\\${');
+  }
+
+  function buildWidgetCode(c){
+    // Это то, что ты вставляешь в Genially
+    return `<div id="FX_ROOT">
+  <style>
+    #FX_ROOT{position:relative;width:100%;height:100%;min-width:100%;min-height:100%;overflow:hidden;background:transparent}
+    #FX_ROOT,#FX_ROOT *{box-sizing:border-box}
+
+    #FX_ROOT .fx_prog{
       position:absolute; right:14px; top:14px; z-index:999999;
       background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.18);
       padding:6px 10px; border-radius:999px; font-size:12px; color:rgba(255,255,255,.9);
       backdrop-filter: blur(6px);
       pointer-events:none; user-select:none;
     }
-    .fx_hintBtn{
-      position:absolute; right:64px; top:12px; z-index:1000000;
+    #FX_ROOT .fx_hintBtn{
+      position:absolute; right:64px; top:12px;
+      z-index:1000000;
       width:38px; height:38px;
       border-radius:12px;
       border:1px solid rgba(255,255,255,.18);
@@ -34,7 +269,7 @@
       -webkit-tap-highlight-color: transparent;
       user-select:none;
     }
-    .fx_task{
+    #FX_ROOT .fx_task{
       position:absolute; left:50%; top:18px; transform:translateX(-50%);
       z-index:999998;
       max-width:min(720px, calc(100% - 40px));
@@ -46,26 +281,40 @@
       font:700 14px/1.25 system-ui,-apple-system,Segoe UI,Roboto,Arial;
       text-align:center;
       backdrop-filter: blur(8px);
-      pointer-events:none; user-select:none;
+      pointer-events:none;
+      user-select:none;
       box-shadow: 0 12px 30px rgba(0,0,0,.22);
     }
-    .fx_target{ position:absolute; z-index:999999; cursor:pointer; user-select:none; -webkit-tap-highlight-color: transparent; }
-    .fx_target img{display:block;width:100%;height:100%;object-fit:contain}
+
+    #FX_ROOT .fx_target{ position:absolute; z-index:999999; cursor:pointer; user-select:none; -webkit-tap-highlight-color: transparent; }
+    #FX_ROOT .fx_target img{display:block;width:100%;height:100%;object-fit:contain}
+
+    @keyframes fxFadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes fxPopIn{0%{opacity:0;transform:scale(.7)}100%{opacity:1;transform:scale(1)}}
+    @keyframes fxSlideIn{0%{opacity:0;transform:translateY(-10px)}100%{opacity:1;transform:translateY(0)}}
+    @keyframes fxWiggle{0%{opacity:0;transform:scale(.9) rotate(-4deg)}70%{opacity:1;transform:scale(1.02) rotate(2deg)}100%{opacity:1;transform:scale(1) rotate(0deg)}}
+    @keyframes fxSoftFade{0%{opacity:0;transform:scale(.96)}100%{opacity:1;transform:scale(1)}}
+
+    #FX_ROOT .fx-fade{animation: fxFadeIn var(--dur,500ms) ease-out}
+    #FX_ROOT .fx-pop{animation: fxPopIn var(--dur,500ms) cubic-bezier(.2,.8,.2,1)}
+    #FX_ROOT .fx-slide{animation: fxSlideIn var(--dur,500ms) ease-out}
+    #FX_ROOT .fx-wiggle{animation: fxWiggle var(--dur,650ms) cubic-bezier(.2,.8,.2,1)}
+    #FX_ROOT .fx-softfade{animation: fxSoftFade var(--dur,1100ms) ease-out}
 
     @keyframes fxHintPulse{
-      0%{transform:scale(1);opacity:1;filter:drop-shadow(0 0 0 rgba(120,220,255,0));}
-      20%{transform:scale(1.25);opacity:1;filter:drop-shadow(0 0 14px rgba(120,220,255,.95));}
-      40%{transform:scale(1);opacity:.35;filter:drop-shadow(0 0 0 rgba(120,220,255,0));}
-      60%{transform:scale(1.25);opacity:1;filter:drop-shadow(0 0 16px rgba(120,220,255,.98));}
-      80%{transform:scale(1);opacity:.35;filter:drop-shadow(0 0 0 rgba(120,220,255,0));}
-      100%{transform:scale(1);opacity:1;filter:drop-shadow(0 0 0 rgba(120,220,255,0));}
+      0%{transform:scale(1);opacity:1;filter:drop-shadow(0 0 0 rgba(120,220,255,0))}
+      20%{transform:scale(1.25);opacity:1;filter:drop-shadow(0 0 14px rgba(120,220,255,.95))}
+      40%{transform:scale(1);opacity:.35;filter:drop-shadow(0 0 0 rgba(120,220,255,0))}
+      60%{transform:scale(1.25);opacity:1;filter:drop-shadow(0 0 16px rgba(120,220,255,.98))}
+      80%{transform:scale(1);opacity:.35;filter:drop-shadow(0 0 0 rgba(120,220,255,0))}
+      100%{transform:scale(1);opacity:1;filter:drop-shadow(0 0 0 rgba(120,220,255,0))}
     }
-    .fx_target.fx-hint img{ animation: fxHintPulse 900ms ease-in-out 0s 2; }
+    #FX_ROOT .fx_target.fx-hint img{animation: fxHintPulse 900ms ease-in-out 0s 2}
   </style>
 
-  <div class="fx_prog">0/7</div>
+  <div class="fx_prog"></div>
   <button class="fx_hintBtn" type="button" aria-label="Подсказка" title="Подсказка">💡</button>
-  <div class="fx_task">Найди бабочку и нажми на неё!</div>
+  <div class="fx_task"></div>
   <div class="fx_target"><img alt=""></div>
 
   <script>
@@ -78,12 +327,15 @@
     const img = target.querySelector('img');
 
     const cfg = {
-      url: "https://propodgotovkaa-creator.github.io/babochka_2/babushka_2?img=1",
-      size: 46,
-      rounds: 7,
-      task: "Найди бабочку и нажми на неё!",
-      pad: 12,
-      gap: 200
+      url: \`${safeTpl(c.url)}\`,
+      size: ${c.size|0},
+      rounds: ${c.rounds|0},
+      pad: ${c.pad|0},
+      gap: ${c.gap|0},
+      anim: \`${safeTpl(c.anim)}\`,
+      dur: ${c.dur|0},
+      task: \`${safeTpl(c.task)}\`,
+      endText: \`${safeTpl(c.endText)}\`
     };
 
     let found = 0;
@@ -94,20 +346,17 @@
     function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
     function rect(){
       const r = root.getBoundingClientRect();
-      return {w: Math.max(1, r.width), h: Math.max(1, r.height)};
+      return {w:Math.max(1,r.width), h:Math.max(1,r.height)};
     }
-    function intersects(a, b){
-      return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
+    function intersects(a,b){
+      return !(a.x+a.w<=b.x || b.x+b.w<=a.x || a.y+a.h<=b.y || b.y+b.h<=a.y);
     }
     function toRootRect(el){
       const sr = root.getBoundingClientRect();
       const r = el.getBoundingClientRect();
-      return { x: r.left - sr.left, y: r.top - sr.top, w: r.width, h: r.height };
+      return { x:r.left - sr.left, y:r.top - sr.top, w:r.width, h:r.height };
     }
-    function pushHistory(pt){
-      history.push({x:pt.x,y:pt.y});
-      if(history.length>HISTORY_MAX) history.shift();
-    }
+    function pushHistory(pt){ history.push({x:pt.x,y:pt.y}); if(history.length>HISTORY_MAX) history.shift(); }
     function distanceToHistory(pt){
       if(!history.length) return Infinity;
       let m=Infinity;
@@ -135,18 +384,29 @@
       return rects;
     }
 
+    function setAnim(){
+      target.classList.remove('fx-fade','fx-pop','fx-slide','fx-wiggle','fx-softfade');
+      if(cfg.anim && cfg.anim !== 'none') target.classList.add('fx-' + cfg.anim);
+      target.style.setProperty('--dur', Math.max(0, cfg.dur|0) + 'ms');
+    }
+
+    function updateUI(){
+      progEl.textContent = found + '/' + Math.max(1, cfg.rounds|0);
+      taskEl.textContent = (cfg.task||'Найди персонажа!').trim();
+      target.style.width = Math.max(1,cfg.size|0) + 'px';
+      target.style.height = Math.max(1,cfg.size|0) + 'px';
+    }
+
     function randomPos(){
       const {w,h} = rect();
       const s = Math.max(1, cfg.size|0);
       const p = clamp(cfg.pad|0, 0, 240);
+      if(w < s + p*2 + 10 || h < s + p*2 + 10) return {x:p,y:p};
+
       const forbid = getForbiddenRects();
       const candidateRect = (pt)=>({x:pt.x,y:pt.y,w:s,h:s});
 
-      // если контейнер слишком маленький — возвращаем безопасно
-      if(w < s + p*2 + 10 || h < s + p*2 + 10){
-        return {x:p, y:p};
-      }
-
+      // сетка 4x3 → ходим по разным зонам, включая низ/углы
       const cols=4, rows=3;
       const cellW=w/cols, cellH=h/rows;
 
@@ -185,9 +445,10 @@
         best = tryInCell(idx, 55);
         if(best) break;
       }
+
       if(!best){
         const minX=p, minY=p, maxX=w-p-s, maxY=h-p-s;
-        for(let k=0;k<200;k++){
+        for(let k=0;k<220;k++){
           const pt={x:minX+Math.random()*(maxX-minX), y:minY+Math.random()*(maxY-minY)};
           const cr=candidateRect(pt);
           if(!forbid.some(fr=>intersects(cr,fr))){ best=pt; break; }
@@ -200,56 +461,114 @@
     }
 
     function place(){
-      target.style.width = (cfg.size|0) + "px";
-      target.style.height = (cfg.size|0) + "px";
       const pos = randomPos();
-      target.style.left = pos.x + "px";
-      target.style.top  = pos.y + "px";
-    }
-
-    function updateUI(){
-      progEl.textContent = found + "/" + (cfg.rounds|0);
-      taskEl.textContent = cfg.task;
+      target.style.left = pos.x + 'px';
+      target.style.top  = pos.y + 'px';
     }
 
     function next(){
       updateUI();
+      setAnim();
       place();
-      target.style.display = "";
+      target.style.display = '';
     }
 
-    hintBtn.addEventListener('click', ()=>{
+    function hint(){
       target.classList.remove('fx-hint');
       void target.offsetWidth;
       target.classList.add('fx-hint');
       setTimeout(()=>target.classList.remove('fx-hint'), 1800);
-    });
+    }
+
+    hintBtn.addEventListener('click', hint);
 
     target.addEventListener('click', ()=>{
       found++;
-      if(found >= (cfg.rounds|0)){
-        updateUI();
-        target.style.display="none";
+      if(found >= Math.max(1, cfg.rounds|0)){
+        taskEl.textContent = (cfg.endText||'Молодец!').trim();
+        progEl.textContent = found + '/' + Math.max(1, cfg.rounds|0);
+        target.style.display = 'none';
         return;
       }
       updateUI();
-      target.style.display="none";
-      setTimeout(()=>{ next(); }, Math.max(0, cfg.gap|0));
+      target.style.display='none';
+      setTimeout(next, Math.max(0, cfg.gap|0));
     });
 
-    // важно: Genially может менять размер контейнера после загрузки
-    const ro = ('ResizeObserver' in window) ? new ResizeObserver(()=>{ place(); }) : null;
+    const ro = ('ResizeObserver' in window) ? new ResizeObserver(()=>{ if(target.style.display!=='none') place(); }) : null;
     if(ro) ro.observe(root);
-    window.addEventListener('resize', place, {passive:true});
+    window.addEventListener('resize', ()=>{ if(target.style.display!=='none') place(); }, {passive:true});
 
-    img.referrerPolicy = "no-referrer";
+    img.referrerPolicy = 'no-referrer';
     img.src = cfg.url;
 
-    // старт с несколькими пересчётами
     updateUI();
     next();
+    // страховка для Genially (иногда размеры доезжают чуть позже)
     setTimeout(place, 250);
     setTimeout(place, 900);
   })();
-  </script>
-</div>
+  <\/script>
+</div>`;
+  }
+
+  function renderPreview(){
+    ui.preview.innerHTML = buildWidgetCode(cfg());
+  }
+
+  function onAnyChange(){
+    ui.sizeVal.textContent = ui.size.value;
+    renderPreview();
+  }
+
+  // live update
+  ui.size.addEventListener('input', onAnyChange);
+  ui.rounds.addEventListener('input', onAnyChange);
+  ui.pad.addEventListener('input', onAnyChange);
+  ui.gap.addEventListener('input', onAnyChange);
+  ui.anim.addEventListener('change', onAnyChange);
+  ui.dur.addEventListener('input', onAnyChange);
+  ui.task.addEventListener('input', onAnyChange);
+  ui.endText.addEventListener('input', onAnyChange);
+  ui.imgUrl.addEventListener('input', onAnyChange);
+
+  ui.btnCode.addEventListener('click', ()=>{
+    ui.out.value = buildWidgetCode(cfg());
+    ui.out.focus();
+    ui.out.select();
+  });
+
+  ui.btnCopy.addEventListener('click', async ()=>{
+    if(!ui.out.value.trim()) ui.out.value = buildWidgetCode(cfg());
+    try{
+      await navigator.clipboard.writeText(ui.out.value);
+      toast('Скопировано ✅');
+    }catch(e){
+      ui.out.focus(); ui.out.select();
+      document.execCommand('copy');
+      toast('Скопировано ✅');
+    }
+  });
+
+  ui.btnReset.addEventListener('click', ()=>{
+    ui.imgUrl.value = '';
+    ui.size.value = 46; ui.sizeVal.textContent='46';
+    ui.rounds.value = 7;
+    ui.pad.value = 12;
+    ui.gap.value = 200;
+    ui.anim.value = 'softfade';
+    ui.dur.value = 1100;
+    ui.task.value = 'Найди бабочку и нажми на неё!';
+    ui.endText.value = 'Молодец! Приходи играть ещё раз 😊';
+    ui.out.value = '';
+    renderPreview();
+  });
+
+  // init
+  ui.sizeVal.textContent = ui.size.value;
+  renderPreview();
+})();
+</script>
+
+</body>
+</html>
