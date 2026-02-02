@@ -29,7 +29,7 @@
   button.ghost{background:rgba(255,255,255,.10);}
   .codeBox{margin-top:10px;border:1px solid rgba(255,255,255,.10);border-radius:14px;background:rgba(0,0,0,.25);padding:10px;}
   .codeBox .cap{font-size:12px;color:var(--muted);margin:0 0 8px;}
-  #out{width:100%;min-height:200px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.35;white-space:pre;}
+  #out{width:100%;min-height:210px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.35;white-space:pre;}
   .hint{margin-top:8px;font-size:12px;color:var(--muted);}
   .warn{margin-top:8px;font-size:12px;color:#ffd27a;display:none;}
 
@@ -40,21 +40,25 @@
   }
   .topBanner{position:absolute;top:14px;left:50%;transform:translateX(-50%);
     background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);
-    border-radius:999px;padding:8px 14px;font-size:14px;
+    border-radius:999px;padding:8px 14px;font-size:14px;color:rgba(255,255,255,.92);
     box-shadow:0 10px 30px rgba(0,0,0,.25);
     pointer-events:none;max-width:min(720px, calc(100% - 180px));
-    text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:5;
+    text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:6;
   }
-  .hud{position:absolute;top:14px;right:14px;display:flex;gap:10px;align-items:center;z-index:6;}
+  .hud{position:absolute;top:14px;right:14px;display:flex;gap:10px;align-items:center;z-index:7;}
   .lamp{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.14);
     background:rgba(255,255,255,.14);display:grid;place-items:center;cursor:pointer;user-select:none;
     box-shadow:0 10px 30px rgba(0,0,0,.25);
   }
   .count{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.12);padding:6px 10px;border-radius:999px;
-    font-size:13px;min-width:52px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);
+    font-size:13px;min-width:52px;text-align:center;color:rgba(255,255,255,.92);box-shadow:0 10px 30px rgba(0,0,0,.25);
   }
-  .sprite{position:absolute;left:0;top:0;transform:translate3d(-9999px,-9999px,0) translate(-50%,-50%);
-    cursor:pointer;user-select:none;-webkit-user-drag:none;will-change:transform,opacity,filter;z-index:4;
+  .sprite{
+    position:absolute; left:0; top:0;
+    transform:translate3d(-9999px,-9999px,0) translate(-50%,-50%);
+    cursor:pointer; user-select:none; -webkit-user-drag:none;
+    will-change:transform,opacity,filter;
+    z-index:5;
   }
 
   .anim-none{opacity:1;}
@@ -67,6 +71,7 @@
   @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
   .anim-soft{animation:softIn var(--dur) ease-out both;}
   @keyframes softIn{from{opacity:0;filter:blur(6px);}to{opacity:1;filter:blur(0);}}
+
   .pulseHint{animation:pulse 700ms ease-in-out 0s 3;}
   @keyframes pulse{
     0%,100%{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1);}
@@ -84,7 +89,7 @@
     <div class="field">
       <label>URL картинки персонажа (можно оставить пустым)</label>
       <input id="imgUrl" placeholder="https://.../image.png">
-      <div class="hint">Если пусто — берём: <b>.../babushka_2.png</b> из репозитория.</div>
+      <div class="hint">Если пусто — берём из репозитория: <b>.../babushka_2.png</b></div>
       <div class="warn" id="imgWarn">⚠️ Картинка не загрузилась. Проверь URL/имя файла.</div>
     </div>
 
@@ -140,11 +145,11 @@
     <div class="row">
       <div class="field">
         <label>Зона стрелок слева/справа (px)</label>
-        <input type="number" id="arrowW" min="60" max="340" value="160">
+        <input type="number" id="arrowW" min="60" max="340" value="170">
       </div>
       <div class="field">
         <label>Высота зоны стрелок (px)</label>
-        <input type="number" id="arrowH" min="120" max="600" value="300">
+        <input type="number" id="arrowH" min="120" max="600" value="320">
       </div>
     </div>
 
@@ -156,7 +161,7 @@
       </div>
       <div class="field">
         <label>&nbsp;</label>
-        <div class="hint">Теперь лампа/счётчик — реальная запретная зона, не “примерная”.</div>
+        <div class="hint">Этот редактор генерирует код, устойчивый к full screen.</div>
       </div>
     </div>
 
@@ -245,37 +250,34 @@
     applyAnim(sprite, cfg);
   }
 
-  async function tryLoad(url){
-    try{
-      const bust=url+(url.includes('?')?'&':'?')+'v='+Date.now();
-      const res=await fetch(bust,{cache:'no-store'});
-      if(!res.ok) return null;
-      const blob=await res.blob();
-      if(!blob||blob.size<10) return null;
-      return URL.createObjectURL(blob);
-    }catch(e){ return null; }
-  }
-
   async function setSpriteSource(){
     imgWarn.style.display="none";
-    if(sprite.dataset.objurl){
-      try{ URL.revokeObjectURL(sprite.dataset.objurl);}catch(e){}
-      sprite.dataset.objurl="";
-    }
+
     const url = (cfg.imgUrl || DEFAULT_IMG).trim();
-    const obj = await tryLoad(url);
-    if(obj){ sprite.src=obj; sprite.dataset.objurl=obj; return true; }
-    sprite.removeAttribute("src");
-    imgWarn.style.display="block";
-    return false;
+    sprite.referrerPolicy = "no-referrer";
+    sprite.decoding = "async";
+    sprite.loading = "eager";
+
+    // fallback: если кэш/сбой — добавим cache-bust
+    const bust = url + (url.includes("?") ? "&" : "?") + "v=" + Date.now();
+
+    sprite.onerror = ()=>{
+      imgWarn.style.display="block";
+    };
+    sprite.onload = ()=>{
+      imgWarn.style.display="none";
+    };
+
+    sprite.src = bust;
+    return true;
   }
 
-  // превью (просто)
   function placePreview(){
     const r = stage.getBoundingClientRect();
     const w = Math.max(1,r.width), h=Math.max(1,r.height);
-    const half = Math.max(10,cfg.size)/2;
-    const edge = Math.max(cfg.pad, 16, Math.round(cfg.size*0.25));
+    const s = Math.max(10,cfg.size);
+    const half = s/2;
+    const edge = Math.max(clamp(cfg.pad,0,240), 16, Math.round(s*0.25));
     const x = edge+half + Math.random()*Math.max(1, w-(edge+half)*2);
     const y = edge+half + Math.random()*Math.max(1, h-(edge+half)*2);
     sprite.style.setProperty('--tx', x+'px');
@@ -283,7 +285,7 @@
     sprite.style.transform = 'translate3d(var(--tx),var(--ty),0) translate(-50%,-50%)';
   }
 
-  // ---------- ВИДЖЕТ-КОД ДЛЯ GENIALLY ----------
+  // ---------- Генерация виджета ----------
   function buildWidgetCode(c){
     const cfgJson = JSON.stringify({
       imgUrl: c.imgUrl || "",
@@ -305,28 +307,24 @@
     return `<div id="FX_ROOT">
   <style>
     #FX_ROOT{position:relative;width:100%;height:100%;overflow:hidden;background:transparent;font-family:system-ui,-apple-system,Segoe UI,Roboto;}
-    #FX_ROOT .topBanner{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:8px 14px;font-size:14px;color:rgba(255,255,255,.92);box-shadow:0 10px 30px rgba(0,0,0,.25);pointer-events:none;max-width:min(720px, calc(100% - 180px));text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:5;}
-    #FX_ROOT .hud{position:absolute;top:14px;right:14px;display:flex;gap:10px;align-items:center;z-index:6;}
+    #FX_ROOT .topBanner{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:8px 14px;font-size:14px;color:rgba(255,255,255,.92);box-shadow:0 10px 30px rgba(0,0,0,.25);pointer-events:none;max-width:min(720px, calc(100% - 180px));text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:2147483000;}
+    #FX_ROOT .hud{position:absolute;top:14px;right:14px;display:flex;gap:10px;align-items:center;z-index:2147483001;}
     #FX_ROOT .lamp{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.14);display:grid;place-items:center;cursor:pointer;user-select:none;box-shadow:0 10px 30px rgba(0,0,0,.25);}
     #FX_ROOT .count{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.12);padding:6px 10px;border-radius:999px;font-size:13px;color:rgba(255,255,255,.92);min-width:52px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);}
-    #FX_ROOT .sprite{position:absolute;left:0;top:0;transform:translate3d(-9999px,-9999px,0) translate(-50%,-50%);cursor:pointer;user-select:none;-webkit-user-drag:none;will-change:transform,opacity,filter;z-index:4;}
+    #FX_ROOT .sprite{position:absolute;left:0;top:0;transform:translate3d(-9999px,-9999px,0) translate(-50%,-50%);cursor:pointer;user-select:none;-webkit-user-drag:none;will-change:transform,opacity,filter;z-index:2147482999;}
 
     #FX_ROOT .anim-none{opacity:1;}
     #FX_ROOT .anim-pop{animation:popIn var(--dur) ease-out both;}
-    @keyframes popIn{
-      from{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(.6);opacity:0;}
-      to  {transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1);opacity:1;}
-    }
+    @keyframes popIn{from{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(.6);opacity:0;}
+                     to  {transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1);opacity:1;}}
     #FX_ROOT .anim-fade{animation:fadeIn var(--dur) ease-out both;}
     @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
     #FX_ROOT .anim-soft{animation:softIn var(--dur) ease-out both;}
     @keyframes softIn{from{opacity:0;filter:blur(6px);}to{opacity:1;filter:blur(0);}}
 
     #FX_ROOT .pulseHint{animation:pulse 700ms ease-in-out 0s 3;}
-    @keyframes pulse{
-      0%,100%{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1);}
-      50%{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1.15);}
-    }
+    @keyframes pulse{0%,100%{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1);}
+                     50%{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1.15);}}
   </style>
 
   <div class="topBanner" id="fx_banner"></div>
@@ -347,22 +345,20 @@
     const cfg = ${cfgJson};
 
     const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-    const intersects=(a,b)=>!(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h);
     const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+    const intersects=(a,b)=>!(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h);
 
     let found = 0;
     let history = [];
     const HISTORY_MAX = 14;
-    let cellCounts = new Map();
-    let lastCell = null;
 
-    function rectSafe(){
-      const r = root.getBoundingClientRect();
-      const lw = root.clientWidth || root.offsetWidth || 1;
-      const lh = root.clientHeight|| root.offsetHeight|| 1;
-      const sx = (r.width  / lw) || 1;
-      const sy = (r.height / lh) || 1;
-      return {vw:Math.max(1,r.width), vh:Math.max(1,r.height), sx:(isFinite(sx)&&sx>0?sx:1), sy:(isFinite(sy)&&sy>0?sy:1), left:r.left, top:r.top};
+    function rectInfo(){
+      const rr = root.getBoundingClientRect();
+      const lw = root.clientWidth  || root.offsetWidth  || 1;
+      const lh = root.clientHeight || root.offsetHeight || 1;
+      const sx = (rr.width  / lw) || 1;
+      const sy = (rr.height / lh) || 1;
+      return {vw:Math.max(1,rr.width), vh:Math.max(1,rr.height), lw, lh, sx:(sx>0?sx:1), sy:(sy>0?sy:1), left:rr.left, top:rr.top};
     }
 
     function elToVisualRect(el){
@@ -372,110 +368,85 @@
       return {x:r.left-rr.left, y:r.top-rr.top, w:r.width, h:r.height};
     }
 
-    function buildForbidden(vw,vh){
+    function forbidden(vw,vh){
+      const s = Math.max(10, cfg.size||46);
       const pad = clamp(cfg.pad||0, 0, 240);
+      const edge = Math.max(pad, 16, Math.round(s*0.25));
       const padUI = 10;
 
       const rects = [];
 
       const b = elToVisualRect(banner);
       const h = elToVisualRect(hud);
-
       if(b) rects.push({x:b.x-padUI, y:b.y-padUI, w:b.w+padUI*2, h:b.h+padUI*2});
       if(h) rects.push({x:h.x-padUI, y:h.y-padUI, w:h.w+padUI*2, h:h.h+padUI*2});
 
-      // Genially UI зоны (примерные, но настраиваемые)
-      const aw=clamp(cfg.arrowW||160,60,340), ah=clamp(cfg.arrowH||300,120,600), arrowY=(vh-ah)/2;
-      rects.push({x:0-pad, y:arrowY-pad, w:aw+pad*2, h:ah+pad*2});
-      rects.push({x:(vw-aw)-pad, y:arrowY-pad, w:aw+pad*2, h:ah+pad*2});
+      // genially стрелки и лого — как зоны
+      const aw=clamp(cfg.arrowW||170,60,340), ah=clamp(cfg.arrowH||320,120,600), arrowY=(vh-ah)/2;
+      rects.push({x:0-edge, y:arrowY-edge, w:aw+edge*2, h:ah+edge*2});
+      rects.push({x:(vw-aw)-edge, y:arrowY-edge, w:aw+edge*2, h:ah+edge*2});
 
       const logoW=clamp(cfg.logoW||190,60,340), logoH=clamp(cfg.logoH||90,40,240);
-      rects.push({x:0-pad, y:(vh-logoH)-pad, w:logoW+pad*2, h:logoH+pad*2});
+      rects.push({x:0-edge, y:(vh-logoH)-edge, w:logoW+edge*2, h:logoH+edge*2});
 
-      return rects;
+      return {rects, edge};
     }
 
     function pushHistory(pt){ history.unshift(pt); if(history.length>HISTORY_MAX) history.pop(); }
 
-    function pick(vw,vh){
+    function pick(){
+      const info = rectInfo();
+      const vw = info.vw, vh = info.vh;
+
       const s = Math.max(10, cfg.size||46);
       const half = s/2;
 
-      // ✅ safe margin — чтобы НЕ залезала в углы/края
-      const edge = Math.max(clamp(cfg.pad||0,0,240), 16, Math.round(s*0.25));
+      const F = forbidden(vw,vh);
+      const forbid = F.rects;
+      const edge = F.edge;
 
       const minX=edge+half, minY=edge+half;
       const maxX=Math.max(minX, vw-edge-half);
       const maxY=Math.max(minY, vh-edge-half);
 
-      const forbid = buildForbidden(vw,vh);
-
-      const cols=6, rows=5, cellW=vw/cols, cellH=vh/rows;
-      const lastPt = history[0]||null;
+      const last = history[0] || null;
       const recent = history.slice(0,7);
+      const minDistFromLast = Math.max(s*1.15, 34);
 
-      const key=(cx,cy)=>cx+','+cy;
-      const getCount=(k)=>cellCounts.get(k)||0;
-
-      function okCenter(x,y){
+      function ok(x,y){
         if(x<minX||x>maxX||y<minY||y>maxY) return false;
         const r={x:x-half,y:y-half,w:s,h:s};
         for(const f of forbid){ if(intersects(r,f)) return false; }
         return true;
       }
 
-      // оценка ячеек: редкость + дальность от последних
-      const cells=[];
-      for(let cy=0;cy<rows;cy++) for(let cx=0;cx<cols;cx++){
-        const k=key(cx,cy);
-        const center={x:cx*cellW+cellW/2,y:cy*cellH+cellH/2};
-        const rarity = 220/(1+getCount(k));
-        const dLast = lastPt ? dist(center,lastPt) : 220;
-        let dRecent=0; for(const rp of recent) dRecent += dist(center,rp);
-        dRecent = recent.length ? dRecent/recent.length : 0;
-        const repeatPenalty = (k===lastCell) ? 320 : 0;
-        const score = rarity + dLast*1.05 + dRecent*0.35 + Math.random()*140 - repeatPenalty;
-        cells.push({cx,cy,k,score});
-      }
-      cells.sort((a,b)=>b.score-a.score);
-
-      const pool=cells.slice(0,12);
-      let sum=0; for(const c of pool) sum+=Math.max(1,c.score);
-      let r=Math.random()*sum;
-      let chosen=pool[0];
-      for(const c of pool){ r-=Math.max(1,c.score); if(r<=0){chosen=c;break;} }
-
-      const cellX0=chosen.cx*cellW, cellY0=chosen.cy*cellH;
-      const loX=clamp(cellX0+edge+half,minX,maxX), hiX=clamp(cellX0+cellW-edge-half,minX,maxX);
-      const loY=clamp(cellY0+edge+half,minY,maxY), hiY=clamp(cellY0+cellH-edge-half,minY,maxY);
-
-      const minDistFromLast = Math.max(s*1.15, 34);
-
+      // 1) пробуем много кандидатов, выбираем самый "дальний" от последних
       let best=null, bestScore=-Infinity;
-      for(let i=0;i<420;i++){
-        const x=loX+Math.random()*(hiX-loX);
-        const y=loY+Math.random()*(hiY-loY);
-        if(!okCenter(x,y)) continue;
-        if(lastPt && dist({x,y}, lastPt) < minDistFromLast) continue;
+      for(let i=0;i<900;i++){
+        const x=minX + Math.random()*(maxX-minX);
+        const y=minY + Math.random()*(maxY-minY);
+        if(!ok(x,y)) continue;
+        if(last && dist({x,y}, last) < minDistFromLast) continue;
 
-        let dSum=0; for(let k=0;k<recent.length;k++) dSum += dist({x,y}, recent[k])*(k===0?1:0.35);
-        const sc=dSum+Math.random()*80;
-        if(sc>bestScore){bestScore=sc;best={x,y};}
+        let dSum=0;
+        for(let k=0;k<recent.length;k++){
+          dSum += dist({x,y}, recent[k])*(k===0?1:0.35);
+        }
+        const sc = dSum + Math.random()*80;
+        if(sc>bestScore){bestScore=sc; best={x,y};}
       }
 
       if(!best){
-        // fallback: общий поиск
-        for(let i=0;i<900;i++){
-          const x=minX+Math.random()*(maxX-minX);
-          const y=minY+Math.random()*(maxY-minY);
-          if(okCenter(x,y)){best={x,y};break;}
+        // 2) fallback — просто любое валидное
+        for(let i=0;i<2000;i++){
+          const x=minX + Math.random()*(maxX-minX);
+          const y=minY + Math.random()*(maxY-minY);
+          if(ok(x,y)){best={x,y}; break;}
         }
       }
-      if(!best) best={x:minX,y:minY};
 
+      if(!best) best={x:minX,y:minY};
       pushHistory(best);
-      cellCounts.set(chosen.k, getCount(chosen.k)+1);
-      lastCell = chosen.k;
       return best;
     }
 
@@ -488,42 +459,40 @@
       if(cfg.anim==='soft') sprite.classList.add('anim-soft');
     }
 
-    function setSize(){
-      sprite.style.width=(cfg.size||46)+'px';
-      sprite.style.height=(cfg.size||46)+'px';
-    }
-    function setTexts(){
-      banner.textContent = cfg.task || '';
-      count.textContent  = found + '/' + (cfg.rounds||7);
-    }
+    function setSize(){ sprite.style.width=(cfg.size||46)+'px'; sprite.style.height=(cfg.size||46)+'px'; }
+    function setTexts(){ banner.textContent=cfg.task||''; count.textContent=found+'/'+(cfg.rounds||7); }
 
-    async function tryLoad(url){
-      try{
-        const bust=url+(url.includes('?')?'&':'?')+'v='+Date.now();
-        const res=await fetch(bust,{cache:'no-store'});
-        if(!res.ok) return null;
-        const blob=await res.blob();
-        if(!blob||blob.size<10) return null;
-        return URL.createObjectURL(blob);
-      }catch(e){ return null; }
-    }
-
-    async function loadSprite(){
+    function setImg(){
       const url = (cfg.imgUrl||'').trim() || (cfg.defaultImg||'');
-      const obj = await tryLoad(url);
-      if(obj){ sprite.src=obj; sprite.dataset.objurl=obj; return true; }
-      return false;
+      const bust = url + (url.includes('?')?'&':'?') + 'v=' + Date.now();
+      sprite.referrerPolicy='no-referrer';
+      sprite.decoding='async';
+      sprite.loading='eager';
+      sprite.src = bust;
+    }
+
+    // ✅ главное: дождаться реальных размеров (в full screen Genially бывает 0×0)
+    function waitReady(cb){
+      let tries=0;
+      (function loop(){
+        const i = rectInfo();
+        const ok = (i.lw>120 && i.lh>120 && i.vw>120 && i.vh>120);
+        if(ok){ cb(); return; }
+        tries++;
+        if(tries>140){ cb(); return; } // ~2-3 секунды максимум
+        requestAnimationFrame(loop);
+      })();
     }
 
     function placeOnce(){
-      const sp = rectSafe();
-      if(sp.vw < 200 || sp.vh < 150) return false;
+      const info = rectInfo();
+      if(info.vw<120 || info.vh<120) return false;
 
-      const ptV = pick(sp.vw, sp.vh);
+      const ptV = pick();
 
       // visual -> layout (устойчиво при scale)
-      const lx = ptV.x / sp.sx;
-      const ly = ptV.y / sp.sy;
+      const lx = ptV.x / info.sx;
+      const ly = ptV.y / info.sy;
 
       sprite.style.setProperty('--tx', lx+'px');
       sprite.style.setProperty('--ty', ly+'px');
@@ -531,38 +500,25 @@
       return true;
     }
 
-    function isVisibleAndSafe(){
+    function isVisible(){
       const rr = root.getBoundingClientRect();
       const sr = sprite.getBoundingClientRect();
       const outside = (sr.right < rr.left+6 || sr.left > rr.right-6 || sr.bottom < rr.top+6 || sr.top > rr.bottom-6);
-      if(outside) return false;
-
-      // не пересекаться с hud/banner (фактическими)
-      const sp = rectSafe();
-      const forbid = buildForbidden(sp.vw, sp.vh);
-
-      const cx = (sr.left + sr.width/2) - rr.left;
-      const cy = (sr.top  + sr.height/2) - rr.top;
-      const s  = Math.max(10, cfg.size||46);
-      const r  = {x:cx - s/2, y:cy - s/2, w:s, h:s};
-
-      for(const f of forbid){ if(intersects(r,f)) return false; }
-      return true;
+      return !outside;
     }
 
     function stabilize(){
-      // серия стабилизаций — Genially меняет размеры каскадом
-      const times = [0, 70, 150, 260, 420, 680, 1050];
-      times.forEach((t)=>{
-        setTimeout(()=>{
-          placeOnce();
-          // если всё равно не ок — ещё 1-2 попытки
-          let tries=0;
-          while(tries<6 && !isVisibleAndSafe()){
+      waitReady(()=>{
+        const times=[0, 60, 140, 260, 420, 720, 1100];
+        times.forEach(t=>{
+          setTimeout(()=>{
             placeOnce();
-            tries++;
-          }
-        }, t);
+            let guard=0;
+            while(guard<10 && !isVisible()){
+              placeOnce(); guard++;
+            }
+          }, t);
+        });
       });
     }
 
@@ -592,20 +548,20 @@
     });
 
     // init
-    setSize(); applyAnim(); setTexts();
-    loadSprite().then(()=>{ stabilize(); });
+    setSize(); applyAnim(); setTexts(); setImg();
+    stabilize();
 
     if('ResizeObserver' in window){
-      const ro = new ResizeObserver(()=>stabilize());
+      const ro=new ResizeObserver(()=>stabilize());
       ro.observe(root);
     }
     window.addEventListener('resize', ()=>stabilize(), {passive:true});
     document.addEventListener('fullscreenchange', ()=>stabilize());
 
-    // watchdog: если после клика/стрелок пропала — вернуть
+    // watchdog: если Genially перестроил сцену — вернём
     setInterval(()=>{
       if(sprite.style.display==='none') return;
-      if(!isVisibleAndSafe()) stabilize();
+      if(!isVisible()) stabilize();
     }, 650);
   })();
   <\/scr` + `ipt>
