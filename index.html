@@ -1,4 +1,649 @@
-<div id="FX_ROOT">
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,height=device-height,initial-scale=1.0" />
+<title>Редактор «Найди персонажа»</title>
+<style>
+  :root{
+    --bg1:#0b1020;
+    --panel:rgba(20,24,40,.75);
+    --stroke:rgba(255,255,255,.10);
+    --txt:rgba(255,255,255,.92);
+    --muted:rgba(255,255,255,.65);
+    --btn:#2d6cff;
+    --ok:#22c55e;
+  }
+  html,body{margin:0;height:100%;background:var(--bg1);font-family:system-ui,-apple-system,Segoe UI,Roboto; color:var(--txt); overflow:hidden;}
+  .app{
+    position:fixed; inset:0;
+    display:grid;
+    grid-template-columns: 380px 1fr;
+    gap:14px;
+    padding:14px;
+    box-sizing:border-box;
+  }
+  @media (max-width: 980px){
+    .app{grid-template-columns:1fr; grid-template-rows:auto 1fr;}
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--stroke);
+    border-radius:18px;
+    padding:14px 14px 12px;
+    overflow:auto;
+    backdrop-filter: blur(10px);
+  }
+  .title{font-size:18px; font-weight:700; margin:0 0 8px;}
+  .desc{font-size:12px; color:var(--muted); line-height:1.35; margin:0 0 12px;}
+  .field{margin:10px 0;}
+  label{display:block;font-size:12px;color:var(--muted); margin:0 0 4px;}
+  input,select,textarea{
+    width:100%; box-sizing:border-box;
+    background:#101a36;
+    border:1px solid rgba(255,255,255,.10);
+    color:var(--txt);
+    border-radius:10px;
+    padding:8px 10px;
+    outline:none;
+  }
+  input[type="range"]{padding:0; height:28px;}
+  textarea{min-height:70px; resize:vertical;}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .btnRow{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;}
+  button{
+    border:none; border-radius:12px;
+    padding:10px 12px;
+    cursor:pointer;
+    font-weight:700;
+    color:white;
+    background:rgba(255,255,255,.12);
+  }
+  button.primary{background:var(--btn);}
+  button.success{background:var(--ok); color:#062012;}
+  button.ghost{background:rgba(255,255,255,.10);}
+
+  .codeBox{
+    margin-top:10px;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:14px;
+    background:rgba(0,0,0,.25);
+    padding:10px;
+  }
+  .codeBox .cap{font-size:12px;color:var(--muted); margin:0 0 8px;}
+  #out{
+    width:100%;
+    min-height:150px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size:12px;
+    line-height:1.35;
+    white-space:pre;
+  }
+  .hint{margin-top:8px;font-size:12px;color:var(--muted);}
+  .warn{margin-top:8px;font-size:12px;color:#ffd27a;display:none;}
+
+  /* stage */
+  .stage{
+    position:relative;
+    border-radius:18px;
+    overflow:hidden;
+    border:1px solid var(--stroke);
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 8px, rgba(255,255,255,.02) 8px, rgba(255,255,255,.02) 16px),
+      linear-gradient(180deg, rgba(15,24,50,.55), rgba(0,0,0,.25));
+  }
+  .topBanner{
+    position:absolute;
+    top:14px;
+    left:50%;
+    transform:translateX(-50%);
+    background:rgba(0,0,0,.55);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:999px;
+    padding:8px 14px;
+    font-size:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+    pointer-events:none;
+    max-width:min(720px, calc(100% - 180px));
+    text-align:center;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    z-index:5;
+  }
+  .hud{
+    position:absolute;
+    top:14px;
+    right:14px;
+    display:flex;
+    gap:10px;
+    align-items:center;
+    z-index:6;
+  }
+  .lamp{
+    width:38px; height:38px;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.14);
+    display:grid; place-items:center;
+    cursor:pointer;
+    user-select:none;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+  }
+  .lamp:active{transform:translateY(1px);}
+  .count{
+    background:rgba(0,0,0,.45);
+    border:1px solid rgba(255,255,255,.12);
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:13px;
+    min-width:52px;
+    text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+  }
+  .sprite{
+    position:absolute;
+    left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    cursor:pointer;
+    user-select:none;
+    -webkit-user-drag:none;
+    will-change: transform, opacity, filter;
+    z-index:4;
+  }
+
+  /* anim */
+  .anim-none{opacity:1;}
+  .anim-pop{animation:popIn var(--dur) ease-out both;}
+  @keyframes popIn{from{transform:translate(-50%,-50%) scale(.6); opacity:0;} to{transform:translate(-50%,-50%) scale(1); opacity:1;}}
+  .anim-fade{animation:fadeIn var(--dur) ease-out both;}
+  @keyframes fadeIn{from{opacity:0;} to{opacity:1;}}
+  .anim-soft{animation:softIn var(--dur) ease-out both;}
+  @keyframes softIn{from{opacity:0; filter:blur(6px);} to{opacity:1; filter:blur(0);}}
+  .pulseHint{animation:pulse 700ms ease-in-out 0s 3;}
+  @keyframes pulse{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.15);}}
+</style>
+</head>
+
+<body>
+<div class="app" id="APP">
+  <div class="panel">
+    <div class="title">Редактор «Найди персонажа»</div>
+    <p class="desc">
+      Настрой параметры → «Получить код» → вставь результат в Genially (HTML/Embed).
+    </p>
+
+    <div class="field">
+      <label>URL картинки персонажа (можно оставить пустым)</label>
+      <input id="imgUrl" placeholder="https://.../image.png">
+      <div class="hint">
+        Если пусто — используется ссылка:
+        <b>https://propodgotovkaa-creator.github.io/babochka_2/babushka_2</b>
+      </div>
+      <div class="warn" id="imgWarn">⚠️ Картинка не загрузилась. Проверь URL.</div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Размер (px)</label>
+        <input type="range" id="size" min="20" max="180" value="46">
+        <div class="hint"><span id="sizeVal">46</span> px</div>
+      </div>
+      <div class="field">
+        <label>Количество находок (раундов)</label>
+        <input type="number" id="rounds" min="1" max="50" value="7">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Отступ от краёв (px)</label>
+        <input type="number" id="pad" min="0" max="240" value="12">
+      </div>
+      <div class="field">
+        <label>Пауза между раундами (мс)</label>
+        <input type="number" id="pause" min="0" max="5000" value="200">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Анимация появления</label>
+        <select id="anim">
+          <option value="soft" selected>soft fade (медленно)</option>
+          <option value="fade">fade</option>
+          <option value="pop">pop</option>
+          <option value="none">без анимации</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Длительность анимации (мс)</label>
+        <input type="number" id="dur" min="0" max="5000" value="1100">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Инструкция (плашка сверху по центру)</label>
+      <input id="task" value="Найди бабочку и нажми на неё!">
+    </div>
+
+    <div class="field">
+      <label>Текст в конце игры</label>
+      <textarea id="endText">Молодец! Приходи играть ещё раз 😊</textarea>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Зона стрелок слева/справа (px)</label>
+        <input type="number" id="arrowW" min="60" max="220" value="120">
+      </div>
+      <div class="field">
+        <label>Высота зоны стрелок (px)</label>
+        <input type="number" id="arrowH" min="120" max="360" value="220">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Лого Genially слева снизу (w×h, px)</label>
+        <input type="text" id="logoBox" value="170x120">
+        <div class="hint">Формат: 170x120</div>
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <div class="hint">Рандом равномерный: избегает повторов и угловой “качели”.</div>
+      </div>
+    </div>
+
+    <div class="btnRow">
+      <button class="primary" id="btnCode">Получить код</button>
+      <button class="success" id="btnCopy">Копировать код</button>
+      <button class="ghost" id="btnReset">Сброс</button>
+    </div>
+
+    <div class="codeBox">
+      <div class="cap">HTML-код для Genially (DIV + STYLE + SCRIPT)</div>
+      <textarea id="out" readonly placeholder="Нажми «Получить код»"></textarea>
+      <div class="hint">Genially → Insert → Others → Embed → Insert external content (HTML).</div>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="topBanner" id="banner">Найди бабочку и нажми на неё!</div>
+    <div class="hud">
+      <div class="lamp" id="lamp" title="Подсказка">💡</div>
+      <div class="count" id="count">0/7</div>
+    </div>
+    <img class="sprite" id="sprite" alt="sprite" />
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (id)=>document.getElementById(id);
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const parseBox=(s,defW,defH)=>{
+    const m = String(s||"").toLowerCase().match(/(\d+)\s*x\s*(\d+)/);
+    if(!m) return {w:defW,h:defH};
+    return {w:+m[1],h:+m[2]};
+  };
+
+  const DEFAULT_SPRITE_URL = "https://propodgotovkaa-creator.github.io/babochka_2/babushka_2";
+
+  const stage = $("stage");
+  const sprite = $("sprite");
+  const banner = $("banner");
+  const count = $("count");
+  const lamp  = $("lamp");
+  const imgWarn = $("imgWarn");
+
+  let cfg = {};
+  let found = 0;
+
+  let history = [];
+  const HISTORY_MAX = 14;
+  let cellCounts = new Map();
+  let lastCellKey = null;
+
+  function readCfg(){
+    const logo = parseBox($("logoBox").value, 170, 120);
+    cfg = {
+      imgUrl: $("imgUrl").value.trim(),
+      defaultUrl: DEFAULT_SPRITE_URL,
+      size: +$("size").value,
+      rounds: +$("rounds").value,
+      pad: +$("pad").value,
+      pause: +$("pause").value,
+      anim: $("anim").value,
+      dur: +$("dur").value,
+      task: $("task").value,
+      endText: $("endText").value,
+      arrowW: +$("arrowW").value,
+      arrowH: +$("arrowH").value,
+      logoW: logo.w,
+      logoH: logo.h,
+    };
+    $("sizeVal").textContent = String(cfg.size);
+    return cfg;
+  }
+
+  function stageRect(){
+    const r = stage.getBoundingClientRect();
+    return {w: Math.max(1,r.width), h: Math.max(1,r.height)};
+  }
+
+  function intersects(a, b){
+    return !(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h);
+  }
+
+  function dist(a,b){
+    return Math.hypot(a.x-b.x, a.y-b.y);
+  }
+
+  function pushHistory(pt){
+    history.unshift(pt);
+    if(history.length > HISTORY_MAX) history.pop();
+  }
+
+  function buildForbiddenRects(){
+    const {w,h} = stageRect();
+    const p = clamp(cfg.pad, 0, 240);
+
+    const bannerH = 92;
+    const bannerW = Math.min(760, w - 220);
+    const bannerX = (w - bannerW)/2;
+
+    const logoX = 0;
+    const logoY = h - cfg.logoH;
+
+    const aw = clamp(cfg.arrowW, 60, 220);
+    const ah = clamp(cfg.arrowH, 120, 360);
+    const arrowY = (h - ah)/2;
+
+    const hudW = 120, hudH = 70;
+    const hudX = w - hudW, hudY = 0;
+
+    const padRect = (r)=>({x:r.x - p, y:r.y - p, w:r.w + p*2, h:r.h + p*2});
+    return [
+      padRect({x:bannerX,y:0,w:bannerW,h:bannerH}),
+      padRect({x:logoX,y:logoY,w:cfg.logoW,h:cfg.logoH}),
+      padRect({x:0,y:arrowY,w:aw,h:ah}),
+      padRect({x:w-aw,y:arrowY,w:aw,h:ah}),
+      padRect({x:hudX,y:hudY,w:hudW,h:hudH}),
+    ];
+  }
+
+  // ✅ НОРМАЛЬНЫЙ РАНДОМ: центр-координаты + равномерность по клеткам + наказание повторов
+  function pickPosition(){
+    const {w,h} = stageRect();
+    const s = Math.max(10, cfg.size);
+    const p = clamp(cfg.pad, 0, 240);
+    const half = s/2;
+
+    const minX = p + half;
+    const minY = p + half;
+    const maxX = Math.max(minX, w - p - half);
+    const maxY = Math.max(minY, h - p - half);
+
+    const forbid = buildForbiddenRects();
+    const cols = 6, rows = 5;
+    const cellW = w / cols;
+    const cellH = h / rows;
+
+    const lastPt = history[0] || null;
+    const recent = history.slice(0, 7);
+
+    const key = (cx,cy)=>cx + "," + cy;
+    const getCount = (k)=>cellCounts.get(k) || 0;
+
+    function ok(cx, cy){
+      const r = {x: cx - half, y: cy - half, w: s, h: s};
+      for(const f of forbid){
+        if(intersects(r,f)) return false;
+      }
+      return true;
+    }
+
+    const cells = [];
+    for(let cy=0; cy<rows; cy++){
+      for(let cx=0; cx<cols; cx++){
+        const k = key(cx,cy);
+        const center = {x:cx*cellW + cellW/2, y:cy*cellH + cellH/2};
+
+        // чем чаще клетка использовалась — тем ниже шанс
+        const rarity = 220 / (1 + getCount(k));
+
+        // уходим от последней и недавних
+        const dLast = lastPt ? dist(center, lastPt) : 220;
+
+        let dRecent = 0;
+        for(const rp of recent) dRecent += dist(center, rp);
+        dRecent = recent.length ? dRecent / recent.length : 0;
+
+        // запрет “качелей” в одной клетке
+        const repeatPenalty = (k === lastCellKey) ? 320 : 0;
+
+        const score = rarity + dLast*1.05 + dRecent*0.35 + Math.random()*140 - repeatPenalty;
+        cells.push({cx,cy,k,score});
+      }
+    }
+
+    cells.sort((a,b)=>b.score-a.score);
+
+    // выбираем не всегда top1, а из топа с весами (чтобы было “живое”)
+    const TOPK = Math.min(12, cells.length);
+    const pool = cells.slice(0, TOPK);
+
+    let sum = 0;
+    for(const c of pool) sum += Math.max(1, c.score);
+    let r = Math.random() * sum;
+    let chosen = pool[0];
+    for(const c of pool){
+      r -= Math.max(1, c.score);
+      if(r <= 0){ chosen = c; break; }
+    }
+
+    // область внутри выбранной клетки
+    const cellX0 = chosen.cx * cellW;
+    const cellY0 = chosen.cy * cellH;
+
+    const loX = clamp(cellX0 + p + half, minX, maxX);
+    const hiX = clamp(cellX0 + cellW - p - half, minX, maxX);
+    const loY = clamp(cellY0 + p + half, minY, maxY);
+    const hiY = clamp(cellY0 + cellH - p - half, minY, maxY);
+
+    const minDistFromLast = Math.max(s*1.05, 28);
+
+    let best = null, bestScore = -Infinity;
+    for(let i=0;i<260;i++){
+      const x = loX + Math.random()*(hiX-loX);
+      const y = loY + Math.random()*(hiY-loY);
+      if(!ok(x,y)) continue;
+      if(lastPt && dist({x,y}, lastPt) < minDistFromLast) continue;
+
+      // чем дальше от последних 7 — тем лучше
+      let dSum = 0;
+      for(let k=0;k<recent.length;k++){
+        dSum += dist({x,y}, recent[k]) * (k===0 ? 1 : 0.35);
+      }
+      const sc = dSum + Math.random()*70;
+      if(sc > bestScore){ bestScore = sc; best = {x,y}; }
+    }
+
+    // fallback по всему полю
+    if(!best){
+      for(let i=0;i<1800;i++){
+        const x = minX + Math.random()*(maxX-minX);
+        const y = minY + Math.random()*(maxY-minY);
+        if(!ok(x,y)) continue;
+        if(lastPt && dist({x,y}, lastPt) < minDistFromLast) continue;
+        best = {x,y};
+        break;
+      }
+    }
+    if(!best) best = {x:minX,y:minY};
+
+    pushHistory(best);
+    cellCounts.set(chosen.k, getCount(chosen.k) + 1);
+    lastCellKey = chosen.k;
+
+    return best;
+  }
+
+  function setSpriteSize(){
+    sprite.style.width = cfg.size + "px";
+    sprite.style.height = cfg.size + "px";
+  }
+
+  function applyAnim(){
+    sprite.style.setProperty("--dur", Math.max(0,cfg.dur)+"ms");
+    sprite.classList.remove("anim-none","anim-pop","anim-fade","anim-soft");
+    if(cfg.anim==="none") sprite.classList.add("anim-none");
+    if(cfg.anim==="pop")  sprite.classList.add("anim-pop");
+    if(cfg.anim==="fade") sprite.classList.add("anim-fade");
+    if(cfg.anim==="soft") sprite.classList.add("anim-soft");
+  }
+
+  function placeNow(){
+    const pt = pickPosition();
+    sprite.style.left = pt.x + "px";
+    sprite.style.top  = pt.y + "px";
+    sprite.style.transform = "translate(-50%,-50%)";
+  }
+
+  function candidates(){
+    const u = (cfg.imgUrl||"").trim();
+    if(u) return [u];
+    const base = cfg.defaultUrl || DEFAULT_SPRITE_URL;
+    return [base, base+".png", base+".webp", base+".jpg", base+".svg"];
+  }
+
+  async function tryLoadFetch(url){
+    try{
+      const bust = url + (url.includes("?") ? "&" : "?") + "v=" + Date.now();
+      const res = await fetch(bust, {cache:"no-store"});
+      if(!res.ok) return null;
+      const blob = await res.blob();
+      if(!blob || blob.size < 10) return null;
+      return URL.createObjectURL(blob);
+    }catch(e){
+      return null;
+    }
+  }
+
+  async function setSpriteSource(){
+    imgWarn.style.display = "none";
+    if(sprite.dataset.objurl){
+      try{ URL.revokeObjectURL(sprite.dataset.objurl); }catch(e){}
+      sprite.dataset.objurl = "";
+    }
+
+    for(const u of candidates()){
+      const obj = await tryLoadFetch(u);
+      if(obj){
+        sprite.src = obj;
+        sprite.dataset.objurl = obj;
+        return true;
+      }
+    }
+    sprite.removeAttribute("src");
+    imgWarn.style.display = "block";
+    return false;
+  }
+
+  function updateUI(){
+    readCfg();
+    banner.textContent = cfg.task || "";
+    count.textContent = `${found}/${cfg.rounds}`;
+    setSpriteSize();
+    applyAnim();
+  }
+
+  async function init(){
+    readCfg();
+    updateUI();
+    await setSpriteSource();
+    found = 0;
+    history = [];
+    cellCounts.clear();
+    lastCellKey = null;
+    sprite.style.display = "";
+    // несколько “прогревочных” размещений — Genially иногда даёт размер не сразу
+    placeNow();
+    requestAnimationFrame(()=>placeNow());
+    setTimeout(()=>placeNow(), 120);
+    setTimeout(()=>placeNow(), 260);
+  }
+
+  sprite.addEventListener("click", async ()=>{
+    found++;
+    updateUI();
+    sprite.style.display = "none";
+    const pause = Math.max(0, cfg.pause|0);
+    if(pause) await new Promise(r=>setTimeout(r,pause));
+    if(found >= cfg.rounds){
+      banner.textContent = cfg.endText || "";
+      return;
+    }
+    sprite.style.display = "";
+    applyAnim();
+    placeNow();
+    count.textContent = `${found}/${cfg.rounds}`;
+  });
+
+  lamp.addEventListener("click", ()=>{
+    sprite.classList.remove("pulseHint");
+    void sprite.offsetWidth;
+    sprite.classList.add("pulseHint");
+  });
+
+  // UI events
+  const inputs = ["imgUrl","size","rounds","pad","pause","anim","dur","task","endText","arrowW","arrowH","logoBox"];
+  inputs.forEach(id=>{
+    $(id).addEventListener("input", async ()=>{
+      updateUI();
+      await setSpriteSource();
+      placeNow();
+    });
+    $(id).addEventListener("change", async ()=>{
+      updateUI();
+      await setSpriteSource();
+      placeNow();
+    });
+  });
+
+  $("btnReset").addEventListener("click", async ()=>{
+    found = 0;
+    history = [];
+    cellCounts.clear();
+    lastCellKey = null;
+    updateUI();
+    await setSpriteSource();
+    sprite.style.display = "";
+    placeNow();
+  });
+
+  function buildGeniallyCode(){
+    const c = readCfg();
+    const cfgJson = JSON.stringify({
+      imgUrl: c.imgUrl || "",
+      defaultUrl: c.defaultUrl || DEFAULT_SPRITE_URL,
+      size: c.size,
+      rounds: c.rounds,
+      pad: c.pad,
+      pause: c.pause,
+      anim: c.anim,
+      dur: c.dur,
+      task: c.task || "",
+      endText: c.endText || "",
+      arrowW: c.arrowW,
+      arrowH: c.arrowH,
+      logoW: c.logoW,
+      logoH: c.logoH
+    });
+
+    // тот же рандомайзер внутри виджета
+    return `<div id="FX_ROOT">
   <style>
     #FX_ROOT{position:relative;width:100%;height:100%;overflow:hidden;background:transparent;font-family:system-ui,-apple-system,Segoe UI,Roboto;}
     #FX_ROOT .topBanner{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:8px 14px;font-size:14px;color:rgba(255,255,255,.92);box-shadow:0 10px 30px rgba(0,0,0,.25);pointer-events:none;max-width:min(720px, calc(100% - 180px));text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:5;}
@@ -6,7 +651,6 @@
     #FX_ROOT .lamp{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.14);display:grid;place-items:center;cursor:pointer;user-select:none;box-shadow:0 10px 30px rgba(0,0,0,.25);}
     #FX_ROOT .count{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.12);padding:6px 10px;border-radius:999px;font-size:13px;color:rgba(255,255,255,.92);min-width:52px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);}
     #FX_ROOT .sprite{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);cursor:pointer;user-select:none;-webkit-user-drag:none;will-change:transform,opacity,filter;z-index:4;}
-
     #FX_ROOT .anim-none{opacity:1;}
     #FX_ROOT .anim-pop{animation:popIn var(--dur) ease-out both;}
     @keyframes popIn{from{transform:translate(-50%,-50%) scale(.6);opacity:0;}to{transform:translate(-50%,-50%) scale(1);opacity:1;}}
@@ -25,7 +669,7 @@
   </div>
   <img class="sprite" id="fx_sprite" alt="sprite" />
 
-  <script>
+  <scr` + `ipt>
   (function(){
     const root = document.getElementById('FX_ROOT');
     const banner = document.getElementById('fx_banner');
@@ -33,55 +677,28 @@
     const lamp   = document.getElementById('fx_lamp');
     const sprite = document.getElementById('fx_sprite');
 
-    const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-    const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+    const cfg = ${cfgJson};
 
-    // ⚙️ НАСТРОЙКИ (можешь менять прямо тут)
-    const cfg = {
-      imgUrl: "", // если пусто — берём defaultUrl
-      defaultUrl: "https://propodgotovkaa-creator.github.io/babochka_2/babushka_2",
-      size: 46,
-      rounds: 7,
-      pad: 12,
-      pause: 200,
-      anim: "soft",   // soft | fade | pop | none
-      dur: 1100,
-      task: "Найди бабочку и нажми на неё!",
-      endText: "Молодец! Приходи играть ещё раз 😊",
-      arrowW: 120,
-      arrowH: 220,
-      logoW: 170,
-      logoH: 120
-    };
+    const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+    const dist=(a,b)=>Math.hypot(a.x-b.x, a.y-b.y);
+    const intersects=(a,b)=>!(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h);
 
     let found = 0;
     let history = [];
     const HISTORY_MAX = 14;
-
-    // распределение по клеткам (чтобы не было качелей 2 угла)
     let cellCounts = new Map();
     let lastCellKey = null;
 
-    function rectWH(){ const r = root.getBoundingClientRect(); return {w:Math.max(1,r.width),h:Math.max(1,r.height)}; }
-    function intersects(a,b){ return !(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h); }
+    function rectWH(){ const r=root.getBoundingClientRect(); return {w:Math.max(1,r.width),h:Math.max(1,r.height)}; }
     function padRect(r,p){ return {x:r.x-p,y:r.y-p,w:r.w+p*2,h:r.h+p*2}; }
 
     function buildForbiddenRects(){
       const {w,h} = rectWH();
       const p = clamp(cfg.pad||0, 0, 240);
-
-      const bannerH=92;
-      const bannerW=Math.min(760, w-220);
-      const bannerX=(w-bannerW)/2;
-
+      const bannerH=92, bannerW=Math.min(760, w-220), bannerX=(w-bannerW)/2;
       const logoX=0, logoY=h-(cfg.logoH||120);
-
-      const aw=clamp(cfg.arrowW||120,60,220);
-      const ah=clamp(cfg.arrowH||220,120,360);
-      const arrowY=(h-ah)/2;
-
+      const aw=clamp(cfg.arrowW||120,60,220), ah=clamp(cfg.arrowH||220,120,360), arrowY=(h-ah)/2;
       const hudW=120, hudH=70, hudX=w-hudW, hudY=0;
-
       return [
         padRect({x:bannerX,y:0,w:bannerW,h:bannerH}, p),
         padRect({x:logoX,y:logoY,w:(cfg.logoW||170),h:(cfg.logoH||120)}, p),
@@ -93,32 +710,27 @@
 
     function pushHistory(pt){ history.unshift(pt); if(history.length>HISTORY_MAX) history.pop(); }
 
-    // ✅ FIX: координаты теперь считаем как ЦЕНТР (а не как левый верх)
     function pickPosition(){
       const {w,h} = rectWH();
       const s = Math.max(10, cfg.size||46);
       const p = clamp(cfg.pad||0, 0, 240);
+      const half=s/2;
 
-      const half = s/2;
-      const minX = p + half;
-      const minY = p + half;
-      const maxX = Math.max(minX, w - p - half);
-      const maxY = Math.max(minY, h - p - half);
+      const minX=p+half, minY=p+half;
+      const maxX=Math.max(minX, w-p-half);
+      const maxY=Math.max(minY, h-p-half);
 
       const forbid = buildForbiddenRects();
-
-      const cols=6, rows=5;
-      const cellW=w/cols, cellH=h/rows;
+      const cols=6, rows=5, cellW=w/cols, cellH=h/rows;
 
       const lastPt = history[0] || null;
-      const recent = history.slice(0, 6);
+      const recent = history.slice(0,7);
 
       const key=(cx,cy)=>cx+','+cy;
       const getCount=(k)=>cellCounts.get(k)||0;
 
-      // теперь rect кандидата — реальный top-left (x-half, y-half)
-      function ok(cx,cy){
-        const r={x:cx-half, y:cy-half, w:s, h:s};
+      function ok(x,y){
+        const r={x:x-half,y:y-half,w:s,h:s};
         for(const f of forbid) if(intersects(r,f)) return false;
         return true;
       }
@@ -126,40 +738,33 @@
       const cells=[];
       for(let cy=0;cy<rows;cy++) for(let cx=0;cx<cols;cx++){
         const k=key(cx,cy);
-        const c={x:cx*cellW+cellW/2,y:cy*cellH+cellH/2};
-
-        const rarity = 170/(1+getCount(k));
-        const dLast  = lastPt ? dist(c,lastPt) : 200;
-
-        let dRecent=0; for(const rp of recent) dRecent += dist(c,rp);
+        const center={x:cx*cellW+cellW/2,y:cy*cellH+cellH/2};
+        const rarity = 220/(1+getCount(k));
+        const dLast = lastPt ? dist(center,lastPt) : 220;
+        let dRecent=0; for(const rp of recent) dRecent += dist(center,rp);
         dRecent = recent.length ? dRecent/recent.length : 0;
-
-        const repeatPenalty = (k===lastCellKey) ? 260 : 0;
-        const score = rarity + dLast*1.05 + dRecent*0.35 + Math.random()*120 - repeatPenalty;
-
+        const repeatPenalty = (k===lastCellKey) ? 320 : 0;
+        const score = rarity + dLast*1.05 + dRecent*0.35 + Math.random()*140 - repeatPenalty;
         cells.push({cx,cy,k,score});
       }
       cells.sort((a,b)=>b.score-a.score);
 
-      const TOPK=Math.min(10,cells.length);
+      const TOPK=Math.min(12,cells.length);
       const pool=cells.slice(0,TOPK);
 
       let sum=0; for(const c of pool) sum+=Math.max(1,c.score);
-      let rr=Math.random()*sum;
+      let r=Math.random()*sum;
       let chosen=pool[0];
-      for(const c of pool){ rr-=Math.max(1,c.score); if(rr<=0){chosen=c;break;} }
+      for(const c of pool){ r-=Math.max(1,c.score); if(r<=0){chosen=c;break;} }
 
       const cellX0=chosen.cx*cellW, cellY0=chosen.cy*cellH;
+      const loX=clamp(cellX0+p+half,minX,maxX), hiX=clamp(cellX0+cellW-p-half,minX,maxX);
+      const loY=clamp(cellY0+p+half,minY,maxY), hiY=clamp(cellY0+cellH-p-half,minY,maxY);
 
-      const loX = clamp(cellX0 + p + half, minX, maxX);
-      const hiX = clamp(cellX0 + cellW - p - half, minX, maxX);
-      const loY = clamp(cellY0 + p + half, minY, maxY);
-      const hiY = clamp(cellY0 + cellH - p - half, minY, maxY);
+      const minDistFromLast = Math.max(s*1.05, 28);
 
-      const minDistFromLast = Math.max(s*1.05, 26);
-
-      const cand=[];
-      for(let i=0;i<220;i++){
+      let best=null, bestScore=-Infinity;
+      for(let i=0;i<260;i++){
         const x=loX+Math.random()*(hiX-loX);
         const y=loY+Math.random()*(hiY-loY);
         if(!ok(x,y)) continue;
@@ -167,36 +772,26 @@
 
         let dSum=0;
         for(let k=0;k<recent.length;k++) dSum += dist({x,y}, recent[k])*(k===0?1:0.35);
-
-        cand.push({x,y,score:dSum+Math.random()*60});
+        const sc=dSum+Math.random()*70;
+        if(sc>bestScore){bestScore=sc;best={x,y};}
       }
 
-      function globalFallback(){
-        for(let i=0;i<1600;i++){
+      if(!best){
+        for(let i=0;i<1800;i++){
           const x=minX+Math.random()*(maxX-minX);
           const y=minY+Math.random()*(maxY-minY);
           if(!ok(x,y)) continue;
           if(lastPt && dist({x,y}, lastPt) < minDistFromLast) continue;
-          return {x,y};
+          best={x,y}; break;
         }
-        return {x:minX,y:minY};
       }
+      if(!best) best={x:minX,y:minY};
 
-      let pt;
-      if(cand.length){
-        cand.sort((a,b)=>b.score-a.score);
-        const top=cand.slice(0, Math.min(8,cand.length));
-        const pick=top[Math.floor(Math.random()*top.length)];
-        pt={x:pick.x,y:pick.y};
-      }else{
-        pt=globalFallback();
-      }
-
-      pushHistory(pt);
+      pushHistory(best);
       cellCounts.set(chosen.k, getCount(chosen.k)+1);
-      lastCellKey = chosen.k;
+      lastCellKey=chosen.k;
 
-      return pt;
+      return best;
     }
 
     function applyAnim(){
@@ -259,10 +854,45 @@
       sprite.classList.remove('pulseHint'); void sprite.offsetWidth; sprite.classList.add('pulseHint');
     });
 
-    // init
     setSize(); applyAnim(); setTexts();
-    loadSprite().then(()=>{ placeNow(); setTexts(); });
+    loadSprite().then(()=>{
+      placeNow();
+      requestAnimationFrame(()=>placeNow());
+      setTimeout(()=>placeNow(),120);
+      setTimeout(()=>placeNow(),260);
+      setTexts();
+    });
+
     window.addEventListener('resize', ()=>{ clearTimeout(window.__fxR); window.__fxR=setTimeout(()=>placeNow(),150); });
   })();
-  </script>
-</div>
+  <\/scr` + `ipt>
+</div>`;
+  }
+
+  async function copyText(text){
+    try{ await navigator.clipboard.writeText(text); return true; }
+    catch(e){
+      const ta=document.createElement("textarea");
+      ta.value=text; ta.style.position="fixed"; ta.style.left="-9999px";
+      document.body.appendChild(ta); ta.select();
+      const ok=document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    }
+  }
+
+  $("btnCode").addEventListener("click", ()=>{
+    $("out").value = buildGeniallyCode();
+    $("out").scrollTop = 0;
+  });
+
+  $("btnCopy").addEventListener("click", async ()=>{
+    if(!$("out").value.trim()) $("out").value = buildGeniallyCode();
+    await copyText($("out").value);
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>
