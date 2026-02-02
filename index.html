@@ -87,7 +87,6 @@
   }
   .toast.show{opacity:1}
 
-  /* бейдж предпросмотра — чтобы не мешал лампочке */
   .badge{
     position:absolute; left:12px; top:12px; z-index:5;
     background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.12);
@@ -95,10 +94,7 @@
     backdrop-filter: blur(8px);
     pointer-events:none; user-select:none;
   }
-  .prevFrame{
-    position:absolute; inset:0; width:100%; height:100%;
-    border:0; background:transparent;
-  }
+  .prevFrame{position:absolute; inset:0; width:100%; height:100%; border:0; background:transparent;}
 </style>
 </head>
 <body>
@@ -107,14 +103,14 @@
   <div class="panel">
     <h1>Редактор «Найди персонажа»</h1>
     <p class="hint">
-      Это редактор (панель слева) + предпросмотр (справа).<br>
+      Это редактор (слева) + предпросмотр (справа).<br>
       Нажми «Получить код» → вставь результат в Genially (HTML/Embed).
     </p>
 
     <div class="field">
-      <label>URL картинки персонажа (можно оставить пустым)</label>
+      <label>URL картинки персонажа</label>
       <input id="imgUrl" type="text" placeholder="https://.../image.png"/>
-      <div class="note">Если пусто — возьмём файл <b>babushka_2.png</b> рядом с index.html</div>
+      <div class="note">Если оставить пустым — возьмём <b>babushka_2.png</b> рядом с index.html.</div>
     </div>
 
     <div class="row">
@@ -127,7 +123,7 @@
       </div>
       <div class="field">
         <label>Количество находок (раундов)</label>
-        <input id="rounds" type="number" min="1" max="50" value="7"/>
+        <input id="rounds" type="number" min="1" max="60" value="7"/>
       </div>
     </div>
 
@@ -213,7 +209,13 @@
     prev: $('prev')
   };
 
-  const defaultLocal = new URL('./babushka_2.png', location.href).href;
+  function baseDir(){
+    const u = new URL(location.href);
+    u.hash = ''; u.search = '';
+    if(!u.pathname.endsWith('/')) u.pathname = u.pathname.replace(/\/[^\/]*$/, '/');
+    return u.toString();
+  }
+  const DEFAULT_IMG = baseDir() + 'babushka_2.png?v=' + Date.now();
 
   function toast(msg){
     ui.toast.textContent = msg;
@@ -223,7 +225,7 @@
 
   function cfg(){
     return {
-      url: (ui.imgUrl.value || '').trim() || defaultLocal,
+      url: (ui.imgUrl.value || '').trim(),
       size: parseInt(ui.size.value,10)||46,
       rounds: Math.max(1, parseInt(ui.rounds.value,10)||7),
       pad: Math.max(0, parseInt(ui.pad.value,10)||12),
@@ -243,6 +245,8 @@
   }
 
   function buildWidgetCode(c){
+    const imgUrl = c.url || DEFAULT_IMG;
+
     return `<div id="FX_ROOT">
   <style>
     #FX_ROOT{position:relative;width:100%;height:100%;overflow:hidden;background:transparent}
@@ -327,7 +331,7 @@
     const img = target.querySelector('img');
 
     const cfg = {
-      url: \`${safeTpl(c.url)}\`,
+      url: \`${safeTpl(imgUrl)}\`,
       size: ${c.size|0},
       rounds: ${c.rounds|0},
       pad: ${c.pad|0},
@@ -340,8 +344,12 @@
 
     let found = 0;
     let last = {x:null,y:null};
-    const history = [];
-    const HISTORY_MAX = 16;
+
+    // память по клеткам: чтобы не прыгало по одним и тем же местам
+    let gridCols = 5, gridRows = 4;
+    const cellSeen = new Map();
+    const recentCells = [];
+    const RECENT_LIMIT = 6;
 
     function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
     function rect(){
@@ -356,26 +364,32 @@
       const r = el.getBoundingClientRect();
       return { x:r.left - sr.left, y:r.top - sr.top, w:r.width, h:r.height };
     }
-    function pushHistory(pt){ history.push({x:pt.x,y:pt.y}); if(history.length>HISTORY_MAX) history.shift(); }
-    function distanceToHistory(pt){
-      if(!history.length) return Infinity;
-      let m=Infinity;
-      for(const p of history) m=Math.min(m, Math.hypot(pt.x-p.x, pt.y-p.y));
-      return m;
-    }
 
     function getForbiddenRects(){
       const rects = [];
-      const padUI = 10;
+      const padUI = 12;
+
+      // плашка/прогресс/лампочка
       for(const el of [taskEl, progEl, hintBtn]){
         const r = toRootRect(el);
         rects.push({ x:r.x-padUI, y:r.y-padUI, w:r.w+padUI*2, h:r.h+padUI*2 });
       }
+
       const {w,h} = rect();
-      // логотип Genially (слева снизу)
-      rects.push({ x:0, y:h-78, w:220, h:78 });
-      // стрелка "след. слайд" справа по центру
-      rects.push({ x:w-92, y:(h-170)/2, w:92, h:170 });
+
+      // логотип Genially слева снизу — с запасом
+      rects.push({ x:0, y:h-92, w:260, h:92 });
+
+      // зоны стрелок (назад/вперёд) — умеренный запас
+      const navW = 120;
+      const navH = 220;
+
+      // правая стрелка (вперёд)
+      rects.push({ x:w-navW, y:(h-navH)/2, w:navW, h:navH });
+
+      // левая стрелка (назад)
+      rects.push({ x:0, y:(h-navH)/2, w:navW, h:navH });
+
       return rects;
     }
 
@@ -384,7 +398,6 @@
       if(cfg.anim && cfg.anim !== 'none') target.classList.add('fx-' + cfg.anim);
       target.style.setProperty('--dur', Math.max(0, cfg.dur|0) + 'ms');
     }
-
     function updateUI(){
       progEl.textContent = found + '/' + Math.max(1, cfg.rounds|0);
       taskEl.textContent = (cfg.task||'Найди персонажа!').trim();
@@ -392,69 +405,100 @@
       target.style.height = Math.max(1,cfg.size|0) + 'px';
     }
 
+    function pickCellOrder(){
+      const order = [];
+      for(let cy=0; cy<gridRows; cy++){
+        for(let cx=0; cx<gridCols; cx++){
+          const key = cx+'_'+cy;
+          const seen = cellSeen.get(key) || 0;
+          const recentPenalty = recentCells.includes(key) ? 100 : 0;
+          order.push({cx,cy,score: seen + recentPenalty + Math.random()*0.25});
+        }
+      }
+      order.sort((a,b)=>a.score-b.score);
+      return order;
+    }
+
+    function markCell(cx,cy){
+      const key = cx+'_'+cy;
+      cellSeen.set(key, (cellSeen.get(key)||0) + 1);
+      recentCells.push(key);
+      if(recentCells.length>RECENT_LIMIT) recentCells.shift();
+    }
+
     function randomPos(){
       const {w,h} = rect();
       const s = Math.max(1, cfg.size|0);
       const p = clamp(cfg.pad|0, 0, 240);
+
       if(w < s + p*2 + 10 || h < s + p*2 + 10) return {x:p,y:p};
+
+      // сетка под размер контейнера
+      gridCols = (w>=980)?6 : (w>=640)?5 : 4;
+      gridRows = (h>=740)?5 : (h>=520)?4 : 3;
 
       const forbid = getForbiddenRects();
       const candidateRect = (pt)=>({x:pt.x,y:pt.y,w:s,h:s});
+      const cellW = w / gridCols;
+      const cellH = h / gridRows;
 
-      // сетка 4x3 — обязателен "низ" и "углы"
-      const cols=4, rows=3;
-      const cellW=w/cols, cellH=h/rows;
+      const minDist = Math.min(w,h) * 0.26; // дальше от прошлого
+      let best = null;
+      let bestScore = -1;
 
-      const cellUse = new Array(cols*rows).fill(0);
-      for(const pt of history){
-        const cx = Math.min(cols-1, Math.max(0, Math.floor(pt.x/cellW)));
-        const cy = Math.min(rows-1, Math.max(0, Math.floor(pt.y/cellH)));
-        cellUse[cy*cols+cx]++;
+      const cells = pickCellOrder();
+
+      for(const cell of cells){
+        const cx=cell.cx, cy=cell.cy;
+        const minX = Math.max(p, cx*cellW + p);
+        const maxX = Math.min(w - p - s, (cx+1)*cellW - p - s);
+        const minY = Math.max(p, cy*cellH + p);
+        const maxY = Math.min(h - p - s, (cy+1)*cellH - p - s);
+        if(maxX<=minX || maxY<=minY) continue;
+
+        for(let i=0;i<140;i++){
+          const pt = { x: minX + Math.random()*(maxX-minX), y: minY + Math.random()*(maxY-minY) };
+          const cr = candidateRect(pt);
+          if(forbid.some(fr=>intersects(cr,fr))) continue;
+
+          const dLast = (last.x==null) ? minDist : Math.hypot(pt.x-last.x, pt.y-last.y);
+
+          // лёгкий бонус низу/углам, чтобы низ реально использовался
+          const edgeBonus =
+            (pt.y > h*0.68 ? 22 : 0) +
+            (pt.x < w*0.20 ? 10 : 0) +
+            (pt.x > w*0.80 ? 10 : 0);
+
+          const score = dLast + edgeBonus + Math.random()*6;
+
+          if(dLast >= minDist && score > bestScore){
+            bestScore = score; best = {pt, cx, cy};
+          }
+          if(!best && score > bestScore){
+            bestScore = score; best = {pt, cx, cy};
+          }
+        }
+
+        if(best && bestScore >= minDist) break;
       }
-      // сначала клетки, где меньше всего были
-      const order=[...cellUse.keys()].sort((a,b)=>cellUse[a]-cellUse[b]);
 
-      function tryInCell(idx, tries){
-        const cx=idx%cols, cy=Math.floor(idx/cols);
-        const minX=Math.max(p, cx*cellW+p);
-        const maxX=Math.min(w-p-s, (cx+1)*cellW-p-s);
-        const minY=Math.max(p, cy*cellH+p);
-        const maxY=Math.min(h-p-s, (cy+1)*cellH-p-s);
-        if(maxX<=minX || maxY<=minY) return null;
-
-        let best=null, bestScore=-1;
-        for(let i=0;i<tries;i++){
+      if(!best){
+        const minX=p, minY=p, maxX=w-p-s, maxY=h-p-s;
+        for(let k=0;k<700;k++){
           const pt={x:minX+Math.random()*(maxX-minX), y:minY+Math.random()*(maxY-minY)};
           const cr=candidateRect(pt);
           if(forbid.some(fr=>intersects(cr,fr))) continue;
-
-          const dHist=distanceToHistory(pt);
-          const dLast=(last.x===null)?dHist:Math.hypot(pt.x-last.x, pt.y-last.y);
-          const score=dHist*1.10 + dLast*0.35 + Math.random()*12;
-          if(score>bestScore){bestScore=score; best=pt;}
+          best = {pt, cx: Math.min(gridCols-1, Math.max(0, Math.floor(pt.x/cellW))),
+                      cy: Math.min(gridRows-1, Math.max(0, Math.floor(pt.y/cellH)))};
+          break;
         }
-        return best;
       }
 
-      let best=null;
-      for(const idx of order){
-        best = tryInCell(idx, 70);
-        if(best) break;
-      }
+      if(!best) best = {pt:{x:p,y:p}, cx:0, cy:0};
 
-      // жёсткий фолбэк
-      if(!best){
-        const minX=p, minY=p, maxX=w-p-s, maxY=h-p-s;
-        for(let k=0;k<260;k++){
-          const pt={x:minX+Math.random()*(maxX-minX), y:minY+Math.random()*(maxY-minY)};
-          const cr=candidateRect(pt);
-          if(!forbid.some(fr=>intersects(cr,fr))){ best=pt; break; }
-        }
-        if(!best) best={x:minX,y:minY};
-      }
-
-      last=best; pushHistory(best);
-      return best;
+      last = best.pt;
+      markCell(best.cx, best.cy);
+      return best.pt;
     }
 
     function place(){
@@ -492,13 +536,18 @@
     });
 
     img.referrerPolicy = 'no-referrer';
-    img.onerror = ()=>{ /* если URL битый — пусть хотя бы не "пусто" */ img.src=''; };
+    img.onload = ()=>{ /* ok */ };
+    img.onerror = ()=>{ target.style.display='none'; };
+
     img.src = cfg.url;
 
     updateUI();
     next();
-    setTimeout(place, 250);
-    setTimeout(place, 900);
+
+    // стабилизация после layout
+    setTimeout(()=>{ if(target.style.display!=='none') place(); }, 250);
+    setTimeout(()=>{ if(target.style.display!=='none') place(); }, 900);
+
     window.addEventListener('resize', ()=>{ if(target.style.display!=='none') place(); }, {passive:true});
   })();
   <\/script>
@@ -514,16 +563,55 @@
   }
 
   function renderPreview(){
+    ui.sizeVal.textContent = ui.size.value;
     const c = cfg();
     ui.prev.srcdoc = buildPreviewDoc(c);
   }
 
-  function onAnyChange(){
-    ui.sizeVal.textContent = ui.size.value;
+  function generateCode(){
+    const c = cfg();
+    ui.out.value = buildWidgetCode(c);
     renderPreview();
   }
 
-  ui.size.addEventListener('input', onAnyChange);
-  ui.rounds.addEventListener('input', onAnyChange);
-  ui.pad.addEventListener('input', onAnyChange);
-  ui.gap.addEventListener('input', onAnyChange
+  async function copyCode(){
+    const code = ui.out.value.trim() || buildWidgetCode(cfg());
+    try{
+      await navigator.clipboard.writeText(code);
+      toast('Скопировано ✅');
+    }catch(e){
+      ui.out.focus(); ui.out.select();
+      toast('Скопируй вручную (Cmd+C)');
+    }
+  }
+
+  function reset(){
+    ui.size.value = 46;
+    ui.rounds.value = 7;
+    ui.pad.value = 12;
+    ui.gap.value = 200;
+    ui.anim.value = 'softfade';
+    ui.dur.value = 1100;
+    ui.task.value = 'Найди бабочку и нажми на неё!';
+    ui.endText.value = 'Молодец! Приходи играть ещё раз 😊';
+    ui.imgUrl.value = ''; // оставляем пустым — возьмёт babushka_2.png
+    ui.out.value = '';
+    renderPreview();
+  }
+
+  // events
+  for(const el of [ui.imgUrl, ui.size, ui.rounds, ui.pad, ui.gap, ui.anim, ui.dur, ui.task, ui.endText]){
+    el.addEventListener('input', renderPreview);
+    el.addEventListener('change', renderPreview);
+  }
+
+  ui.btnCode.addEventListener('click', generateCode);
+  ui.btnCopy.addEventListener('click', copyCode);
+  ui.btnReset.addEventListener('click', reset);
+
+  renderPreview();
+})();
+</script>
+
+</body>
+</html>
