@@ -7,14 +7,12 @@
 <style>
   :root{
     --bg1:#0b1020;
-    --bg2:#0f1832;
     --panel:rgba(20,24,40,.75);
     --stroke:rgba(255,255,255,.10);
     --txt:rgba(255,255,255,.92);
     --muted:rgba(255,255,255,.65);
     --btn:#2d6cff;
     --ok:#22c55e;
-    --bad:#ef4444;
   }
   html,body{margin:0;height:100%;background:var(--bg1);font-family:system-ui,-apple-system,Segoe UI,Roboto; color:var(--txt); overflow:hidden;}
   .app{
@@ -52,7 +50,6 @@
   input[type="range"]{padding:0; height:28px;}
   textarea{min-height:70px; resize:vertical;}
   .row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-  .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
   .btnRow{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;}
   button{
     border:none; border-radius:12px;
@@ -65,6 +62,7 @@
   button.primary{background:var(--btn);}
   button.success{background:var(--ok); color:#062012;}
   button.ghost{background:rgba(255,255,255,.10);}
+
   .codeBox{
     margin-top:10px;
     border:1px solid rgba(255,255,255,.10);
@@ -75,23 +73,14 @@
   .codeBox .cap{font-size:12px;color:var(--muted); margin:0 0 8px;}
   #out{
     width:100%;
-    min-height:140px;
+    min-height:150px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size:12px;
     line-height:1.35;
     white-space:pre;
   }
-  .hint{
-    margin-top:8px;
-    font-size:12px;
-    color:var(--muted);
-  }
-  .warn{
-    margin-top:8px;
-    font-size:12px;
-    color:#ffd27a;
-    display:none;
-  }
+  .hint{margin-top:8px;font-size:12px;color:var(--muted);}
+  .warn{margin-top:8px;font-size:12px;color:#ffd27a;display:none;}
 
   /* stage */
   .stage{
@@ -120,6 +109,7 @@
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
+    z-index:5;
   }
   .hud{
     position:absolute;
@@ -128,7 +118,7 @@
     display:flex;
     gap:10px;
     align-items:center;
-    z-index:5;
+    z-index:6;
   }
   .lamp{
     width:38px; height:38px;
@@ -159,21 +149,10 @@
     user-select:none;
     -webkit-user-drag:none;
     will-change: transform, opacity, filter;
+    z-index:4;
   }
 
-  /* preview forbidden overlays (debug) */
-  .forbidDebug{
-    position:absolute;
-    pointer-events:none;
-    border:1px dashed rgba(255,255,255,.14);
-    background:rgba(255,255,255,.03);
-    border-radius:10px;
-    z-index:1;
-    display:none;
-  }
-  .showDebug .forbidDebug{display:block;}
-
-  /* anim presets */
+  /* anim */
   .anim-none{opacity:1;}
   .anim-pop{animation:popIn var(--dur) ease-out both;}
   @keyframes popIn{from{transform:translate(-50%,-50%) scale(.6); opacity:0;} to{transform:translate(-50%,-50%) scale(1); opacity:1;}}
@@ -185,20 +164,19 @@
   @keyframes pulse{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.15);}}
 </style>
 </head>
-<body>
 
+<body>
 <div class="app" id="APP">
   <div class="panel">
     <div class="title">Редактор «Найди персонажа»</div>
     <p class="desc">
-      Это редактор (панель слева) + предпросмотр (справа).<br>
-      1) Настрой параметры → 2) Нажми «Получить код» → 3) Вставь результат в Genially (HTML/Embed).
+      Настрой параметры → «Получить код» → вставь результат в Genially (HTML/Embed).
     </p>
 
     <div class="field">
       <label>URL картинки персонажа (можно оставить пустым)</label>
       <input id="imgUrl" placeholder="https://.../image.png">
-      <div class="hint">Если пусто — возьмём локальный файл рядом с <b>index.html</b>: <b>babushka_2</b> или <b>babushka_2.png</b></div>
+      <div class="hint">Если пусто — берём локальный файл рядом с index.html: <b>babushka_2</b> или <b>babushka_2.png</b></div>
       <div class="warn" id="imgWarn">⚠️ Картинка не загрузилась. Проверь URL или имя локального файла.</div>
     </div>
 
@@ -255,12 +233,10 @@
       <div class="field">
         <label>Зона стрелок слева/справа (px)</label>
         <input type="number" id="arrowW" min="60" max="220" value="120">
-        <div class="hint">Ширина запретной зоны по краям (для стрелок назад/вперёд)</div>
       </div>
       <div class="field">
         <label>Высота зоны стрелок (px)</label>
         <input type="number" id="arrowH" min="120" max="360" value="220">
-        <div class="hint">Высота запретной зоны по центру слева/справа</div>
       </div>
     </div>
 
@@ -271,11 +247,8 @@
         <div class="hint">Формат: 170x120</div>
       </div>
       <div class="field">
-        <label>Показывать запретные зоны (debug)</label>
-        <select id="debug">
-          <option value="0">нет</option>
-          <option value="1">да</option>
-        </select>
+        <label>&nbsp;</label>
+        <div class="hint">Стрелки “назад/вперёд” закрыты с двух сторон по центру.</div>
       </div>
     </div>
 
@@ -288,32 +261,22 @@
     <div class="codeBox">
       <div class="cap">HTML-код для Genially (DIV + STYLE + SCRIPT)</div>
       <textarea id="out" readonly placeholder="Нажми «Получить код»"></textarea>
-      <div class="hint">Вставляй в Genially → <b>Insert → Others → Embed → Insert external content</b> (HTML/Embed).</div>
+      <div class="hint">Genially → Insert → Others → Embed → Insert external content (HTML).</div>
     </div>
   </div>
 
   <div class="stage" id="stage">
     <div class="topBanner" id="banner">Найди бабочку и нажми на неё!</div>
-
     <div class="hud">
       <div class="lamp" id="lamp" title="Подсказка">💡</div>
       <div class="count" id="count">0/7</div>
     </div>
-
-    <!-- debug forbidden rectangles -->
-    <div class="forbidDebug" id="dbg1"></div>
-    <div class="forbidDebug" id="dbg2"></div>
-    <div class="forbidDebug" id="dbg3"></div>
-    <div class="forbidDebug" id="dbg4"></div>
-    <div class="forbidDebug" id="dbg5"></div>
-
     <img class="sprite" id="sprite" alt="sprite" />
   </div>
 </div>
 
 <script>
 (() => {
-  // ---------- helpers ----------
   const $ = (id)=>document.getElementById(id);
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const parseBox=(s,defW,defH)=>{
@@ -322,18 +285,16 @@
     return {w:+m[1],h:+m[2]};
   };
 
-  // ---------- state ----------
   const stage = $("stage");
   const sprite = $("sprite");
   const banner = $("banner");
   const count = $("count");
   const lamp  = $("lamp");
   const imgWarn = $("imgWarn");
-  const APP = $("APP");
 
   let cfg = {};
   let found = 0;
-  let history = []; // positions history to avoid repeats
+  let history = [];
   const HISTORY_MAX = 12;
 
   function readCfg(){
@@ -352,7 +313,6 @@
       arrowH: +$("arrowH").value,
       logoW: logo.w,
       logoH: logo.h,
-      debug: $("debug").value === "1",
     };
     $("sizeVal").textContent = String(cfg.size);
     return cfg;
@@ -361,56 +321,6 @@
   function stageRect(){
     const r = stage.getBoundingClientRect();
     return {w: r.width, h:r.height};
-  }
-
-  function buildForbiddenRects(){
-    const {w,h} = stageRect();
-    const p = clamp(cfg.pad, 0, 240);
-
-    // 1) instruction banner (top center)
-    // reserve some max width & height
-    const bannerH = 92;
-    const bannerW = Math.min(760, w - 220);
-    const bannerX = (w - bannerW)/2;
-    const bannerY = 0;
-
-    // 2) logo genially bottom-left
-    const logoX = 0;
-    const logoY = h - cfg.logoH;
-
-    // 3) arrows left/right
-    const aw = clamp(cfg.arrowW, 60, 220);
-    const ah = clamp(cfg.arrowH, 120, 360);
-    const arrowY = (h - ah)/2;
-
-    // 4) top-right HUD (lamp+counter) small area
-    const hudW = 120;
-    const hudH = 70;
-    const hudX = w - hudW;
-    const hudY = 0;
-
-    // add padding around forbidden areas a bit
-    const padRect = (r)=>({x:r.x - p, y:r.y - p, w:r.w + p*2, h:r.h + p*2});
-
-    const rects = [
-      padRect({x:bannerX,y:bannerY,w:bannerW,h:bannerH}),
-      padRect({x:logoX,y:logoY,w:cfg.logoW,h:cfg.logoH}),
-      padRect({x:0,y:arrowY,w:aw,h:ah}),
-      padRect({x:w-aw,y:arrowY,w:aw,h:ah}),
-      padRect({x:hudX,y:hudY,w:hudW,h:hudH}),
-    ];
-
-    // debug draw
-    const dbg = [$("dbg1"),$("dbg2"),$("dbg3"),$("dbg4"),$("dbg5")];
-    dbg.forEach((el,i)=>{
-      const r = rects[i];
-      el.style.left = r.x+"px";
-      el.style.top  = r.y+"px";
-      el.style.width = r.w+"px";
-      el.style.height= r.h+"px";
-    });
-
-    return rects;
   }
 
   function intersects(a, b){
@@ -427,41 +337,58 @@
     return Math.hypot(dx,dy);
   }
 
-  // КЛЮЧЕВОЕ: новый алгоритм позиции.
-  // 1) делим сцену на сетку 5x4
-  // 2) выбираем ячейки в разном порядке
-  // 3) в каждой ячейке пробуем много точек
-  // 4) оцениваем "насколько далеко от истории"
+  function buildForbiddenRects(){
+    const {w,h} = stageRect();
+    const p = clamp(cfg.pad, 0, 240);
+
+    // banner top center
+    const bannerH = 92;
+    const bannerW = Math.min(760, w - 220);
+    const bannerX = (w - bannerW)/2;
+    const bannerY = 0;
+
+    // genially logo bottom-left
+    const logoX = 0;
+    const logoY = h - cfg.logoH;
+
+    // arrows left/right center
+    const aw = clamp(cfg.arrowW, 60, 220);
+    const ah = clamp(cfg.arrowH, 120, 360);
+    const arrowY = (h - ah)/2;
+
+    // top-right HUD (lamp+counter)
+    const hudW = 120, hudH = 70;
+    const hudX = w - hudW, hudY = 0;
+
+    const padRect = (r)=>({x:r.x - p, y:r.y - p, w:r.w + p*2, h:r.h + p*2});
+    return [
+      padRect({x:bannerX,y:bannerY,w:bannerW,h:bannerH}),
+      padRect({x:logoX,y:logoY,w:cfg.logoW,h:cfg.logoH}),
+      padRect({x:0,y:arrowY,w:aw,h:ah}),
+      padRect({x:w-aw,y:arrowY,w:aw,h:ah}),
+      padRect({x:hudX,y:hudY,w:hudW,h:hudH}),
+    ];
+  }
+
   function pickPosition(){
     const {w,h} = stageRect();
     const s = Math.max(10, cfg.size);
     const p = clamp(cfg.pad, 0, 240);
 
-    // safe bounds
-    const minX = p;
-    const minY = p;
+    const minX = p, minY = p;
     const maxX = Math.max(minX, w - p - s);
     const maxY = Math.max(minY, h - p - s);
 
     const forbid = buildForbiddenRects();
 
-    // if stage too small, fallback
-    if(maxX - minX < 1 || maxY - minY < 1){
-      return {x:minX, y:minY};
-    }
-
-    // grid
     const cols = 5, rows = 4;
     const cellW = w / cols;
     const cellH = h / rows;
 
-    // cell usage (avoid repeating same cells)
     const cellScore = [];
     for(let cy=0; cy<rows; cy++){
       for(let cx=0; cx<cols; cx++){
-        // center of cell
         const c = {x:cx*cellW + cellW/2, y:cy*cellH + cellH/2};
-        // score = farther from recent positions
         let score = 0;
         if(history.length){
           const d0 = dist(c, history[0]);
@@ -473,7 +400,6 @@
         cellScore.push({cx,cy,score});
       }
     }
-    // sort by best score desc
     cellScore.sort((a,b)=>b.score-a.score);
 
     function ok(x,y){
@@ -484,12 +410,10 @@
       return true;
     }
 
-    // try best cells first
     for(const cs of cellScore){
       const cellX0 = cs.cx * cellW;
       const cellY0 = cs.cy * cellH;
 
-      // compute allowed region inside cell
       const loX = clamp(cellX0 + p, minX, maxX);
       const hiX = clamp(cellX0 + cellW - p - s, minX, maxX);
       const loY = clamp(cellY0 + p, minY, maxY);
@@ -497,46 +421,29 @@
 
       if(hiX < loX || hiY < loY) continue;
 
-      // many attempts in this cell
-      let best = null;
-      let bestScore = -Infinity;
-      for(let i=0;i<60;i++){
+      let best=null, bestScore=-Infinity;
+      for(let i=0;i<70;i++){
         const x = loX + Math.random()*(hiX-loX);
         const y = loY + Math.random()*(hiY-loY);
         if(!ok(x,y)) continue;
 
-        // distance score from history (avoid repeats)
-        let d = 0;
+        let d=0;
         for(let k=0;k<Math.min(history.length,6);k++){
           d += dist({x,y}, history[k]) * (k===0?1:0.35);
         }
         const sc = d + Math.random()*30;
-        if(sc > bestScore){
-          bestScore = sc;
-          best = {x,y};
-        }
+        if(sc>bestScore){bestScore=sc; best={x,y};}
       }
-      if(best){
-        pushHistory(best);
-        return best;
-      }
+      if(best){pushHistory(best); return best;}
     }
 
-    // fallback: relax and brute force anywhere
-    for(let i=0;i<500;i++){
+    for(let i=0;i<600;i++){
       const x = minX + Math.random()*(maxX-minX);
       const y = minY + Math.random()*(maxY-minY);
-      if(ok(x,y)){
-        const pt={x,y};
-        pushHistory(pt);
-        return pt;
-      }
+      if(ok(x,y)){const pt={x,y}; pushHistory(pt); return pt;}
     }
 
-    // final fallback
-    const pt={x:minX,y:minY};
-    pushHistory(pt);
-    return pt;
+    const pt={x:minX,y:minY}; pushHistory(pt); return pt;
   }
 
   function setSpriteSize(){
@@ -557,39 +464,44 @@
     const pt = pickPosition();
     sprite.style.left = pt.x + "px";
     sprite.style.top  = pt.y + "px";
-    // sprite uses translate(-50%,-50%), so move anchor to center:
-    // we set left/top as center coords
     sprite.style.transform = "translate(-50%,-50%)";
   }
 
-  function spriteLoadUrl(){
-    // Если пусто — пробуем разные варианты рядом с index.html
+  function candidates(){
     const u = (cfg.imgUrl||"").trim();
     if(u) return [u];
+    return ["./babushka_2","./babushka_2.png","./babushka_2.webp","./babushka_2.jpg"];
+  }
 
-    // ВАЖНО: у тебя файл может быть без расширения, либо .png
-    // пробуем по очереди
-    return ["./babushka_2", "./babushka_2.png", "./babushka_2.webp", "./babushka_2.jpg"];
+  async function tryLoadFetch(url){
+    try{
+      const bust = url + (url.includes("?") ? "&" : "?") + "v=" + Date.now();
+      const res = await fetch(bust, {cache:"no-store"});
+      if(!res.ok) return null;
+      const blob = await res.blob();
+      if(!blob || blob.size < 10) return null;
+      return URL.createObjectURL(blob);
+    }catch(e){
+      return null;
+    }
   }
 
   async function setSpriteSource(){
     imgWarn.style.display = "none";
-    const list = spriteLoadUrl();
-    // пробуем загрузить по очереди
-    for(const u of list){
-      const ok = await new Promise(res=>{
-        const im = new Image();
-        im.onload = ()=>res(true);
-        im.onerror = ()=>res(false);
-        im.src = u + (u.includes("?") ? "&" : "?") + "v=" + Date.now();
-      });
-      if(ok){
-        // ставим без cache-bust, иначе Genially может не кешировать нормально
-        sprite.src = u;
+    if(sprite.dataset.objurl){
+      try{ URL.revokeObjectURL(sprite.dataset.objurl); }catch(e){}
+      sprite.dataset.objurl = "";
+    }
+
+    for(const u of candidates()){
+      const obj = await tryLoadFetch(u);
+      if(obj){
+        sprite.src = obj;
+        sprite.dataset.objurl = obj;
         return true;
       }
     }
-    // ничего не загрузилось
+
     sprite.removeAttribute("src");
     imgWarn.style.display = "block";
     return false;
@@ -599,61 +511,65 @@
     readCfg();
     banner.textContent = cfg.task || "";
     count.textContent = `${found}/${cfg.rounds}`;
-    APP.classList.toggle("showDebug", cfg.debug);
     setSpriteSize();
     applyAnim();
   }
 
-  // ---------- preview/game in editor ----------
-  function resetGame(){
-    found = 0;
-    history = [];
+  async function init(){
+    readCfg();
     updateUI();
+    await setSpriteSource();
+    found=0; history=[];
+    sprite.style.display="";
     placeNow();
   }
 
-  function nextRound(){
+  sprite.addEventListener("click", async ()=>{
+    found++;
+    updateUI();
+    sprite.style.display = "none";
+    const pause = Math.max(0, cfg.pause|0);
+    if(pause) await new Promise(r=>setTimeout(r,pause));
     if(found >= cfg.rounds){
       banner.textContent = cfg.endText || "";
-      sprite.style.display = "none";
       return;
     }
     sprite.style.display = "";
     applyAnim();
     placeNow();
-  }
-
-  sprite.addEventListener("click", async ()=>{
-    // click = found
-    found++;
-    updateUI();
-    sprite.style.display = "none";
-    // пауза
-    const pause = Math.max(0, cfg.pause|0);
-    if(pause) await new Promise(r=>setTimeout(r,pause));
-    nextRound();
+    count.textContent = `${found}/${cfg.rounds}`;
   });
 
   lamp.addEventListener("click", ()=>{
-    // подсказка: пульсация
     sprite.classList.remove("pulseHint");
-    // reflow
     void sprite.offsetWidth;
     sprite.classList.add("pulseHint");
   });
 
-  // ---------- code generator for Genially ----------
-  function escHtml(s){
-    return String(s)
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;");
-  }
+  // UI events
+  const inputs = ["imgUrl","size","rounds","pad","pause","anim","dur","task","endText","arrowW","arrowH","logoBox"];
+  inputs.forEach(id=>{
+    $(id).addEventListener("input", async ()=>{
+      updateUI();
+      await setSpriteSource();
+      placeNow();
+    });
+    $(id).addEventListener("change", async ()=>{
+      updateUI();
+      await setSpriteSource();
+      placeNow();
+    });
+  });
+
+  $("btnReset").addEventListener("click", async ()=>{
+    found=0; history=[];
+    updateUI();
+    await setSpriteSource();
+    sprite.style.display="";
+    placeNow();
+  });
 
   function buildGeniallyCode(){
-    // Всё самодостаточно: DIV + STYLE + SCRIPT
-    // Внутри — тот же алгоритм позиции, запретные зоны и подсказка.
-
     const c = readCfg();
     const cfgJson = JSON.stringify({
       imgUrl: c.imgUrl || "",
@@ -671,45 +587,14 @@
       logoH: c.logoH
     });
 
-    // ВСТАВКА: генерируем готовый блок
     return `<div id="FX_ROOT">
   <style>
     #FX_ROOT{position:relative;width:100%;height:100%;overflow:hidden;background:transparent;font-family:system-ui,-apple-system,Segoe UI,Roboto;}
-    #FX_ROOT .topBanner{
-      position:absolute; top:14px; left:50%; transform:translateX(-50%);
-      background:rgba(0,0,0,.55);
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:999px; padding:8px 14px; font-size:14px; color:rgba(255,255,255,.92);
-      box-shadow:0 10px 30px rgba(0,0,0,.25);
-      pointer-events:none;
-      max-width:min(720px, calc(100% - 180px));
-      text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-      z-index:5;
-    }
-    #FX_ROOT .hud{
-      position:absolute; top:14px; right:14px; display:flex; gap:10px; align-items:center; z-index:6;
-    }
-    #FX_ROOT .lamp{
-      width:38px; height:38px; border-radius:50%;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.14);
-      display:grid; place-items:center; cursor:pointer; user-select:none;
-      box-shadow:0 10px 30px rgba(0,0,0,.25);
-    }
-    #FX_ROOT .count{
-      background:rgba(0,0,0,.45);
-      border:1px solid rgba(255,255,255,.12);
-      padding:6px 10px; border-radius:999px; font-size:13px; color:rgba(255,255,255,.92);
-      min-width:52px; text-align:center;
-      box-shadow:0 10px 30px rgba(0,0,0,.25);
-    }
-    #FX_ROOT .sprite{
-      position:absolute; left:50%; top:50%;
-      transform:translate(-50%,-50%);
-      cursor:pointer; user-select:none; -webkit-user-drag:none;
-      will-change: transform, opacity, filter;
-      z-index:4;
-    }
+    #FX_ROOT .topBanner{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:8px 14px;font-size:14px;color:rgba(255,255,255,.92);box-shadow:0 10px 30px rgba(0,0,0,.25);pointer-events:none;max-width:min(720px, calc(100% - 180px));text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:5;}
+    #FX_ROOT .hud{position:absolute;top:14px;right:14px;display:flex;gap:10px;align-items:center;z-index:6;}
+    #FX_ROOT .lamp{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.14);display:grid;place-items:center;cursor:pointer;user-select:none;box-shadow:0 10px 30px rgba(0,0,0,.25);}
+    #FX_ROOT .count{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.12);padding:6px 10px;border-radius:999px;font-size:13px;color:rgba(255,255,255,.92);min-width:52px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);}
+    #FX_ROOT .sprite{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);cursor:pointer;user-select:none;-webkit-user-drag:none;will-change:transform,opacity,filter;z-index:4;}
     #FX_ROOT .anim-none{opacity:1;}
     #FX_ROOT .anim-pop{animation:popIn var(--dur) ease-out both;}
     @keyframes popIn{from{transform:translate(-50%,-50%) scale(.6);opacity:0;}to{transform:translate(-50%,-50%) scale(1);opacity:1;}}
@@ -728,7 +613,7 @@
   </div>
   <img class="sprite" id="fx_sprite" alt="sprite" />
 
-  <script>
+  <scr` + `ipt>
   (function(){
     const root = document.getElementById('FX_ROOT');
     const banner = document.getElementById('fx_banner');
@@ -738,44 +623,24 @@
 
     const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
     const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
-
     const cfg = ${cfgJson};
     let found = 0;
     let history = [];
     const HISTORY_MAX = 12;
 
-    function rectWH(){
-      const r = root.getBoundingClientRect();
-      return {w:r.width, h:r.height};
-    }
-
-    function intersects(a,b){
-      return !(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h);
-    }
+    function rectWH(){ const r = root.getBoundingClientRect(); return {w:r.width,h:r.height}; }
+    function intersects(a,b){ return !(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h); }
 
     function buildForbiddenRects(){
       const {w,h} = rectWH();
       const p = clamp(cfg.pad||0, 0, 240);
-
-      const bannerH = 92;
-      const bannerW = Math.min(760, w - 220);
-      const bannerX = (w - bannerW)/2;
-      const bannerY = 0;
-
-      const logoX = 0;
-      const logoY = h - (cfg.logoH||120);
-
-      const aw = clamp(cfg.arrowW||120, 60, 220);
-      const ah = clamp(cfg.arrowH||220, 120, 360);
-      const arrowY = (h - ah)/2;
-
-      const hudW = 120, hudH = 70;
-      const hudX = w - hudW, hudY = 0;
-
-      const padRect = (r)=>({x:r.x - p, y:r.y - p, w:r.w + p*2, h:r.h + p*2});
-
+      const bannerH=92, bannerW=Math.min(760, w-220), bannerX=(w-bannerW)/2;
+      const logoX=0, logoY=h-(cfg.logoH||120);
+      const aw=clamp(cfg.arrowW||120,60,220), ah=clamp(cfg.arrowH||220,120,360), arrowY=(h-ah)/2;
+      const hudW=120, hudH=70, hudX=w-hudW, hudY=0;
+      const padRect=(r)=>({x:r.x-p,y:r.y-p,w:r.w+p*2,h:r.h+p*2});
       return [
-        padRect({x:bannerX,y:bannerY,w:bannerW,h:bannerH}),
+        padRect({x:bannerX,y:0,w:bannerW,h:bannerH}),
         padRect({x:logoX,y:logoY,w:(cfg.logoW||170),h:(cfg.logoH||120)}),
         padRect({x:0,y:arrowY,w:aw,h:ah}),
         padRect({x:w-aw,y:arrowY,w:aw,h:ah}),
@@ -783,86 +648,54 @@
       ];
     }
 
-    function pushHistory(pt){
-      history.unshift(pt);
-      if(history.length > HISTORY_MAX) history.pop();
-    }
+    function pushHistory(pt){ history.unshift(pt); if(history.length>HISTORY_MAX) history.pop(); }
 
     function pickPosition(){
       const {w,h} = rectWH();
       const s = Math.max(10, cfg.size||46);
       const p = clamp(cfg.pad||0, 0, 240);
-
-      const minX = p;
-      const minY = p;
-      const maxX = Math.max(minX, w - p - s);
-      const maxY = Math.max(minY, h - p - s);
-
+      const minX=p, minY=p, maxX=Math.max(minX,w-p-s), maxY=Math.max(minY,h-p-s);
       const forbid = buildForbiddenRects();
-      if(maxX - minX < 1 || maxY - minY < 1){
-        return {x:minX, y:minY};
-      }
+      const cols=5, rows=4, cellW=w/cols, cellH=h/rows;
 
-      const cols = 5, rows = 4;
-      const cellW = w / cols;
-      const cellH = h / rows;
-
-      const cellScore = [];
-      for(let cy=0; cy<rows; cy++){
-        for(let cx=0; cx<cols; cx++){
-          const c = {x:cx*cellW + cellW/2, y:cy*cellH + cellH/2};
-          let score = 0;
-          if(history.length){
-            const d0 = dist(c, history[0]);
-            const d1 = history[1] ? dist(c, history[1]) : d0;
-            score = d0*1.0 + d1*0.4 + Math.random()*50;
-          }else{
-            score = Math.random()*1000;
-          }
-          cellScore.push({cx,cy,score});
-        }
+      const cellScore=[];
+      for(let cy=0;cy<rows;cy++) for(let cx=0;cx<cols;cx++){
+        const c={x:cx*cellW+cellW/2,y:cy*cellH+cellH/2};
+        let score=history.length ? (dist(c,history[0])*1.0 + (history[1]?dist(c,history[1]):dist(c,history[0]))*0.4 + Math.random()*50) : Math.random()*1000;
+        cellScore.push({cx,cy,score});
       }
       cellScore.sort((a,b)=>b.score-a.score);
 
       function ok(x,y){
-        const r = {x, y, w:s, h:s};
+        const r={x,y,w:s,h:s};
         for(const f of forbid) if(intersects(r,f)) return false;
         return true;
       }
 
       for(const cs of cellScore){
-        const cellX0 = cs.cx * cellW;
-        const cellY0 = cs.cy * cellH;
-
-        const loX = clamp(cellX0 + p, minX, maxX);
-        const hiX = clamp(cellX0 + cellW - p - s, minX, maxX);
-        const loY = clamp(cellY0 + p, minY, maxY);
-        const hiY = clamp(cellY0 + cellH - p - s, minY, maxY);
-        if(hiX < loX || hiY < loY) continue;
+        const cellX0=cs.cx*cellW, cellY0=cs.cy*cellH;
+        const loX=clamp(cellX0+p,minX,maxX), hiX=clamp(cellX0+cellW-p-s,minX,maxX);
+        const loY=clamp(cellY0+p,minY,maxY), hiY=clamp(cellY0+cellH-p-s,minY,maxY);
+        if(hiX<loX||hiY<loY) continue;
 
         let best=null, bestScore=-Infinity;
-        for(let i=0;i<60;i++){
-          const x = loX + Math.random()*(hiX-loX);
-          const y = loY + Math.random()*(hiY-loY);
+        for(let i=0;i<70;i++){
+          const x=loX+Math.random()*(hiX-loX), y=loY+Math.random()*(hiY-loY);
           if(!ok(x,y)) continue;
-
-          let d=0;
-          for(let k=0;k<Math.min(history.length,6);k++){
-            d += dist({x,y}, history[k]) * (k===0?1:0.35);
-          }
-          const sc = d + Math.random()*30;
-          if(sc>bestScore){bestScore=sc; best={x,y};}
+          let d=0; for(let k=0;k<Math.min(history.length,6);k++) d += dist({x,y}, history[k])*(k===0?1:0.35);
+          const sc=d+Math.random()*30;
+          if(sc>bestScore){bestScore=sc;best={x,y};}
         }
-        if(best){pushHistory(best); return best;}
+        if(best){pushHistory(best);return best;}
       }
 
-      for(let i=0;i<500;i++){
-        const x = minX + Math.random()*(maxX-minX);
-        const y = minY + Math.random()*(maxY-minY);
-        if(ok(x,y)){const pt={x,y}; pushHistory(pt); return pt;}
+      for(let i=0;i<600;i++){
+        const x=minX+Math.random()*(maxX-minX), y=minY+Math.random()*(maxY-minY);
+        const r={x,y,w:s,h:s};
+        let okk=true; for(const f of forbid){ if(intersects(r,f)){okk=false;break;} }
+        if(okk){const pt={x,y};pushHistory(pt);return pt;}
       }
-
-      const pt={x:minX,y:minY}; pushHistory(pt); return pt;
+      const pt={x:minX,y:minY};pushHistory(pt);return pt;
     }
 
     function applyAnim(){
@@ -874,160 +707,88 @@
       if(cfg.anim==='soft') sprite.classList.add('anim-soft');
     }
 
-    function setSize(){
-      const s = cfg.size||46;
-      sprite.style.width = s+'px';
-      sprite.style.height= s+'px';
+    function setSize(){ sprite.style.width=(cfg.size||46)+'px'; sprite.style.height=(cfg.size||46)+'px'; }
+    function setTexts(){ banner.textContent=cfg.task||''; count.textContent=found+'/'+(cfg.rounds||7); }
+
+    async function tryLoadFetch(url){
+      try{
+        const bust=url+(url.includes('?')?'&':'?')+'v='+Date.now();
+        const res=await fetch(bust,{cache:'no-store'});
+        if(!res.ok) return null;
+        const blob=await res.blob();
+        if(!blob||blob.size<10) return null;
+        return URL.createObjectURL(blob);
+      }catch(e){ return null; }
     }
 
-    function setTexts(){
-      banner.textContent = cfg.task || '';
-      count.textContent  = found + '/' + (cfg.rounds||7);
-    }
-
-    function spriteLoadCandidates(){
-      const u = (cfg.imgUrl||'').trim();
+    function candidates(){
+      const u=(cfg.imgUrl||'').trim();
       if(u) return [u];
       return ['./babushka_2','./babushka_2.png','./babushka_2.webp','./babushka_2.jpg'];
     }
 
-    function tryLoad(list, i){
-      return new Promise((res)=>{
-        if(i>=list.length){res(false); return;}
-        const url=list[i];
-        const im=new Image();
-        im.onload=()=>{sprite.src=url; res(true);};
-        im.onerror=()=>{tryLoad(list,i+1).then(res);};
-        im.src = url + (url.includes('?')?'&':'?') + 'v=' + Date.now();
-      });
+    async function loadSprite(){
+      if(sprite.dataset.objurl){ try{URL.revokeObjectURL(sprite.dataset.objurl);}catch(e){} sprite.dataset.objurl=''; }
+      for(const u of candidates()){
+        const obj=await tryLoadFetch(u);
+        if(obj){ sprite.src=obj; sprite.dataset.objurl=obj; return true; }
+      }
+      return false;
     }
 
     function placeNow(){
-      const pt = pickPosition();
-      sprite.style.left = pt.x+'px';
-      sprite.style.top  = pt.y+'px';
-      sprite.style.transform = 'translate(-50%,-50%)';
+      const pt=pickPosition();
+      sprite.style.left=pt.x+'px';
+      sprite.style.top =pt.y+'px';
+      sprite.style.transform='translate(-50%,-50%)';
     }
 
     function nextRound(){
-      if(found >= (cfg.rounds||7)){
-        banner.textContent = cfg.endText || '';
-        sprite.style.display='none';
-        return;
-      }
+      if(found >= (cfg.rounds||7)){ banner.textContent=cfg.endText||''; sprite.style.display='none'; return; }
       sprite.style.display='';
-      applyAnim();
-      placeNow();
-      setTexts();
+      applyAnim(); placeNow(); setTexts();
     }
 
     sprite.addEventListener('click', ()=>{
-      found++;
-      sprite.style.display='none';
-      setTexts();
-      const pause = Math.max(0, cfg.pause||0);
-      setTimeout(nextRound, pause);
+      found++; sprite.style.display='none'; setTexts();
+      setTimeout(nextRound, Math.max(0, cfg.pause||0));
     });
 
     lamp.addEventListener('click', ()=>{
-      sprite.classList.remove('pulseHint');
-      void sprite.offsetWidth;
-      sprite.classList.add('pulseHint');
+      sprite.classList.remove('pulseHint'); void sprite.offsetWidth; sprite.classList.add('pulseHint');
     });
 
-    // init
-    setSize();
-    applyAnim();
-    setTexts();
-    tryLoad(spriteLoadCandidates(),0).then(()=>{
-      // start position after image loads (or not)
-      placeNow();
-      setTexts();
-    });
-
-    // responsive reposition on resize
-    let t=null;
-    window.addEventListener('resize', ()=>{
-      clearTimeout(t);
-      t=setTimeout(()=>{placeNow();}, 150);
-    });
+    setSize(); applyAnim(); setTexts();
+    loadSprite().then(()=>{ placeNow(); setTexts(); });
+    window.addEventListener('resize', ()=>{ clearTimeout(window.__fxR); window.__fxR=setTimeout(()=>placeNow(),150); });
   })();
-  </script>
+  </scr` + `ipt>
 </div>`;
   }
 
-  // ---------- clipboard ----------
   async function copyText(text){
-    try{
-      await navigator.clipboard.writeText(text);
-      return true;
-    }catch(e){
-      // fallback
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position="fixed";
-      ta.style.left="-9999px";
-      document.body.appendChild(ta);
-      ta.select();
-      const ok = document.execCommand("copy");
+    try{ await navigator.clipboard.writeText(text); return true; }
+    catch(e){
+      const ta=document.createElement("textarea");
+      ta.value=text; ta.style.position="fixed"; ta.style.left="-9999px";
+      document.body.appendChild(ta); ta.select();
+      const ok=document.execCommand("copy");
       document.body.removeChild(ta);
       return ok;
     }
   }
 
-  // ---------- UI events ----------
-  function bind(){
-    const inputs = ["imgUrl","size","rounds","pad","pause","anim","dur","task","endText","arrowW","arrowH","logoBox","debug"];
-    inputs.forEach(id=>{
-      $(id).addEventListener("input", ()=>{
-        updateUI();
-        // не сбрасываем прогресс при каждом вводе — только перепозиционируем/обновляем
-        setSpriteSource().then(()=>{ placeNow(); });
-        count.textContent = `${found}/${cfg.rounds}`;
-      });
-      $(id).addEventListener("change", ()=>{
-        updateUI();
-        setSpriteSource().then(()=>{ placeNow(); });
-      });
-    });
+  $("btnCode").addEventListener("click", ()=>{
+    $("out").value = buildGeniallyCode();
+    $("out").scrollTop = 0;
+  });
 
-    $("btnReset").addEventListener("click", ()=>{
-      // мягкий сброс только игры и истории
-      resetGame();
-      setSpriteSource().then(()=>{ sprite.style.display=""; });
-    });
-
-    $("btnCode").addEventListener("click", ()=>{
-      const code = buildGeniallyCode();
-      $("out").value = code;
-      $("out").scrollTop = 0;
-    });
-
-    $("btnCopy").addEventListener("click", async ()=>{
-      const val = $("out").value.trim();
-      if(!val){
-        const code = buildGeniallyCode();
-        $("out").value = code;
-      }
-      await copyText($("out").value);
-    });
-  }
-
-  // ---------- init ----------
-  async function init(){
-    readCfg();
-    updateUI();
-    bind();
-
-    // авто-предпросмотр как раньше: сразу показываем бабочку
-    await setSpriteSource();
-    resetGame();
-    sprite.style.display = "";
-  }
+  $("btnCopy").addEventListener("click", async ()=>{
+    if(!$("out").value.trim()) $("out").value = buildGeniallyCode();
+    await copyText($("out").value);
+  });
 
   init();
 })();
-</script>
-
-</body>
+</script> </body>
 </html>
