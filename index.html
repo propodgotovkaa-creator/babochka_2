@@ -73,7 +73,7 @@
   .codeBox .cap{font-size:12px;color:var(--muted); margin:0 0 8px;}
   #out{
     width:100%;
-    min-height:150px;
+    min-height:160px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size:12px;
     line-height:1.35;
@@ -169,29 +169,27 @@
 <div class="app" id="APP">
   <div class="panel">
     <div class="title">Редактор «Найди персонажа»</div>
-    <p class="desc">
-      Настрой параметры → «Получить код» → вставь результат в Genially (HTML/Embed).
-    </p>
+    <p class="desc">Настрой параметры → «Получить код» → вставь результат в Genially (HTML/Embed).</p>
 
     <div class="field">
       <label>URL картинки персонажа (можно оставить пустым)</label>
       <input id="imgUrl" placeholder="https://.../image.png">
       <div class="hint">
-        Если пусто — используется ссылка:
+        Если пусто — используется:
         <b>https://propodgotovkaa-creator.github.io/babochka_2/babushka_2</b>
       </div>
-      <div class="warn" id="imgWarn">⚠️ Картинка не загрузилась. Проверь URL.</div>
+      <div class="warn" id="imgWarn">⚠️ Картинка не загрузилась. Проверь URL/имя файла в репозитории.</div>
     </div>
 
     <div class="row">
       <div class="field">
         <label>Размер (px)</label>
-        <input type="range" id="size" min="20" max="180" value="46">
+        <input type="range" id="size" min="20" max="220" value="46">
         <div class="hint"><span id="sizeVal">46</span> px</div>
       </div>
       <div class="field">
         <label>Количество находок (раундов)</label>
-        <input type="number" id="rounds" min="1" max="50" value="7">
+        <input type="number" id="rounds" min="1" max="99" value="8">
       </div>
     </div>
 
@@ -202,7 +200,7 @@
       </div>
       <div class="field">
         <label>Пауза между раундами (мс)</label>
-        <input type="number" id="pause" min="0" max="5000" value="200">
+        <input type="number" id="pause" min="0" max="8000" value="200">
       </div>
     </div>
 
@@ -235,11 +233,11 @@
     <div class="row">
       <div class="field">
         <label>Зона стрелок слева/справа (px)</label>
-        <input type="number" id="arrowW" min="60" max="220" value="120">
+        <input type="number" id="arrowW" min="60" max="260" value="120">
       </div>
       <div class="field">
         <label>Высота зоны стрелок (px)</label>
-        <input type="number" id="arrowH" min="120" max="360" value="220">
+        <input type="number" id="arrowH" min="120" max="420" value="220">
       </div>
     </div>
 
@@ -251,7 +249,7 @@
       </div>
       <div class="field">
         <label>&nbsp;</label>
-        <div class="hint">Рандом равномерный: избегает повторов и угловой “качели”.</div>
+        <div class="hint">Fullscreen-фикс включён: позиция пересчитывается после стабилизации размеров.</div>
       </div>
     </div>
 
@@ -272,7 +270,7 @@
     <div class="topBanner" id="banner">Найди бабочку и нажми на неё!</div>
     <div class="hud">
       <div class="lamp" id="lamp" title="Подсказка">💡</div>
-      <div class="count" id="count">0/7</div>
+      <div class="count" id="count">0/8</div>
     </div>
     <img class="sprite" id="sprite" alt="sprite" />
   </div>
@@ -288,7 +286,8 @@
     return {w:+m[1],h:+m[2]};
   };
 
-  const DEFAULT_SPRITE_URL = "https://propodgotovkaa-creator.github.io/babochka_2/babushka_2";
+  // ✅ твой репозиторий + имя файла (база). Дальше код сам пробует расширения.
+  const DEFAULT_SPRITE_BASE = "https://propodgotovkaa-creator.github.io/babochka_2/babushka_2";
 
   const stage = $("stage");
   const sprite = $("sprite");
@@ -309,7 +308,7 @@
     const logo = parseBox($("logoBox").value, 170, 120);
     cfg = {
       imgUrl: $("imgUrl").value.trim(),
-      defaultUrl: DEFAULT_SPRITE_URL,
+      defaultBase: DEFAULT_SPRITE_BASE,
       size: +$("size").value,
       rounds: +$("rounds").value,
       pad: +$("pad").value,
@@ -356,8 +355,8 @@
     const logoX = 0;
     const logoY = h - cfg.logoH;
 
-    const aw = clamp(cfg.arrowW, 60, 220);
-    const ah = clamp(cfg.arrowH, 120, 360);
+    const aw = clamp(cfg.arrowW, 60, 260);
+    const ah = clamp(cfg.arrowH, 120, 420);
     const arrowY = (h - ah)/2;
 
     const hudW = 120, hudH = 70;
@@ -373,7 +372,7 @@
     ];
   }
 
-  // ✅ НОРМАЛЬНЫЙ РАНДОМ: центр-координаты + равномерность по клеткам + наказание повторов
+  // ✅ нормальный рандом (центр-координаты + равномерность по клеткам)
   function pickPosition(){
     const {w,h} = stageRect();
     const s = Math.max(10, cfg.size);
@@ -393,8 +392,8 @@
     const lastPt = history[0] || null;
     const recent = history.slice(0, 7);
 
-    const key = (cx,cy)=>cx + "," + cy;
-    const getCount = (k)=>cellCounts.get(k) || 0;
+    const key=(cx,cy)=>cx + "," + cy;
+    const getCount=(k)=>cellCounts.get(k) || 0;
 
     function ok(cx, cy){
       const r = {x: cx - half, y: cy - half, w: s, h: s};
@@ -410,17 +409,13 @@
         const k = key(cx,cy);
         const center = {x:cx*cellW + cellW/2, y:cy*cellH + cellH/2};
 
-        // чем чаще клетка использовалась — тем ниже шанс
         const rarity = 220 / (1 + getCount(k));
-
-        // уходим от последней и недавних
         const dLast = lastPt ? dist(center, lastPt) : 220;
 
         let dRecent = 0;
         for(const rp of recent) dRecent += dist(center, rp);
         dRecent = recent.length ? dRecent / recent.length : 0;
 
-        // запрет “качелей” в одной клетке
         const repeatPenalty = (k === lastCellKey) ? 320 : 0;
 
         const score = rarity + dLast*1.05 + dRecent*0.35 + Math.random()*140 - repeatPenalty;
@@ -430,7 +425,6 @@
 
     cells.sort((a,b)=>b.score-a.score);
 
-    // выбираем не всегда top1, а из топа с весами (чтобы было “живое”)
     const TOPK = Math.min(12, cells.length);
     const pool = cells.slice(0, TOPK);
 
@@ -443,7 +437,6 @@
       if(r <= 0){ chosen = c; break; }
     }
 
-    // область внутри выбранной клетки
     const cellX0 = chosen.cx * cellW;
     const cellY0 = chosen.cy * cellH;
 
@@ -454,14 +447,13 @@
 
     const minDistFromLast = Math.max(s*1.05, 28);
 
-    let best = null, bestScore = -Infinity;
+    let best=null, bestScore=-Infinity;
     for(let i=0;i<260;i++){
       const x = loX + Math.random()*(hiX-loX);
       const y = loY + Math.random()*(hiY-loY);
       if(!ok(x,y)) continue;
       if(lastPt && dist({x,y}, lastPt) < minDistFromLast) continue;
 
-      // чем дальше от последних 7 — тем лучше
       let dSum = 0;
       for(let k=0;k<recent.length;k++){
         dSum += dist({x,y}, recent[k]) * (k===0 ? 1 : 0.35);
@@ -470,15 +462,13 @@
       if(sc > bestScore){ bestScore = sc; best = {x,y}; }
     }
 
-    // fallback по всему полю
     if(!best){
       for(let i=0;i<1800;i++){
         const x = minX + Math.random()*(maxX-minX);
         const y = minY + Math.random()*(maxY-minY);
         if(!ok(x,y)) continue;
         if(lastPt && dist({x,y}, lastPt) < minDistFromLast) continue;
-        best = {x,y};
-        break;
+        best = {x,y}; break;
       }
     }
     if(!best) best = {x:minX,y:minY};
@@ -511,10 +501,32 @@
     sprite.style.transform = "translate(-50%,-50%)";
   }
 
+  // ✅ FULLSCREEN FIX: пересчитать позицию после стабилизации размеров
+  function sizeLooksBad(){
+    const {w,h} = stageRect();
+    return (w < 200 || h < 150);
+  }
+  function placeWhenStable(delay){
+    setTimeout(()=>{
+      if(sprite.style.display === "none") return;
+      if(sizeLooksBad()){
+        placeWhenStable(120);
+        return;
+      }
+      placeNow();
+    }, delay);
+  }
+  function scheduleStablePlace(){
+    placeWhenStable(0);
+    placeWhenStable(80);
+    placeWhenStable(180);
+    placeWhenStable(360);
+  }
+
   function candidates(){
     const u = (cfg.imgUrl||"").trim();
     if(u) return [u];
-    const base = cfg.defaultUrl || DEFAULT_SPRITE_URL;
+    const base = (cfg.defaultBase||DEFAULT_SPRITE_BASE).trim();
     return [base, base+".png", base+".webp", base+".jpg", base+".svg"];
   }
 
@@ -568,11 +580,7 @@
     cellCounts.clear();
     lastCellKey = null;
     sprite.style.display = "";
-    // несколько “прогревочных” размещений — Genially иногда даёт размер не сразу
-    placeNow();
-    requestAnimationFrame(()=>placeNow());
-    setTimeout(()=>placeNow(), 120);
-    setTimeout(()=>placeNow(), 260);
+    scheduleStablePlace();
   }
 
   sprite.addEventListener("click", async ()=>{
@@ -587,7 +595,7 @@
     }
     sprite.style.display = "";
     applyAnim();
-    placeNow();
+    scheduleStablePlace();
     count.textContent = `${found}/${cfg.rounds}`;
   });
 
@@ -603,12 +611,12 @@
     $(id).addEventListener("input", async ()=>{
       updateUI();
       await setSpriteSource();
-      placeNow();
+      scheduleStablePlace();
     });
     $(id).addEventListener("change", async ()=>{
       updateUI();
       await setSpriteSource();
-      placeNow();
+      scheduleStablePlace();
     });
   });
 
@@ -620,14 +628,15 @@
     updateUI();
     await setSpriteSource();
     sprite.style.display = "";
-    placeNow();
+    scheduleStablePlace();
   });
 
+  // ✅ генерация DIV-кода для Genially (внутри тот же fullscreen fix и тот же рандом)
   function buildGeniallyCode(){
     const c = readCfg();
     const cfgJson = JSON.stringify({
       imgUrl: c.imgUrl || "",
-      defaultUrl: c.defaultUrl || DEFAULT_SPRITE_URL,
+      defaultBase: c.defaultBase || DEFAULT_SPRITE_BASE,
       size: c.size,
       rounds: c.rounds,
       pad: c.pad,
@@ -642,7 +651,6 @@
       logoH: c.logoH
     });
 
-    // тот же рандомайзер внутри виджета
     return `<div id="FX_ROOT">
   <style>
     #FX_ROOT{position:relative;width:100%;height:100%;overflow:hidden;background:transparent;font-family:system-ui,-apple-system,Segoe UI,Roboto;}
@@ -697,7 +705,7 @@
       const p = clamp(cfg.pad||0, 0, 240);
       const bannerH=92, bannerW=Math.min(760, w-220), bannerX=(w-bannerW)/2;
       const logoX=0, logoY=h-(cfg.logoH||120);
-      const aw=clamp(cfg.arrowW||120,60,220), ah=clamp(cfg.arrowH||220,120,360), arrowY=(h-ah)/2;
+      const aw=clamp(cfg.arrowW||120,60,260), ah=clamp(cfg.arrowH||220,120,420), arrowY=(h-ah)/2;
       const hudW=120, hudH=70, hudX=w-hudW, hudY=0;
       return [
         padRect({x:bannerX,y:0,w:bannerW,h:bannerH}, p),
@@ -805,6 +813,31 @@
     function setSize(){ sprite.style.width=(cfg.size||46)+'px'; sprite.style.height=(cfg.size||46)+'px'; }
     function setTexts(){ banner.textContent=cfg.task||''; count.textContent=found+'/'+(cfg.rounds||7); }
 
+    function placeNow(){
+      const pt=pickPosition();
+      sprite.style.left=pt.x+'px';
+      sprite.style.top =pt.y+'px';
+      sprite.style.transform='translate(-50%,-50%)';
+    }
+
+    function sizeLooksBad(){
+      const r=root.getBoundingClientRect();
+      return (r.width < 200 || r.height < 150);
+    }
+    function placeWhenStable(delay){
+      setTimeout(()=>{
+        if(sprite.style.display === 'none') return;
+        if(sizeLooksBad()){ placeWhenStable(120); return; }
+        placeNow();
+      }, delay);
+    }
+    function scheduleStablePlace(){
+      placeWhenStable(0);
+      placeWhenStable(80);
+      placeWhenStable(180);
+      placeWhenStable(360);
+    }
+
     async function tryLoadFetch(url){
       try{
         const bust=url+(url.includes('?')?'&':'?')+'v='+Date.now();
@@ -819,7 +852,7 @@
     function candidates(){
       const u=(cfg.imgUrl||'').trim();
       if(u) return [u];
-      const base=(cfg.defaultUrl||'').trim();
+      const base=(cfg.defaultBase||'').trim();
       return [base, base+'.png', base+'.webp', base+'.jpg', base+'.svg'].filter(Boolean);
     }
 
@@ -832,17 +865,12 @@
       return false;
     }
 
-    function placeNow(){
-      const pt=pickPosition();
-      sprite.style.left=pt.x+'px';
-      sprite.style.top =pt.y+'px';
-      sprite.style.transform='translate(-50%,-50%)';
-    }
-
     function nextRound(){
       if(found >= (cfg.rounds||7)){ banner.textContent=cfg.endText||''; sprite.style.display='none'; return; }
       sprite.style.display='';
-      applyAnim(); placeNow(); setTexts();
+      applyAnim();
+      scheduleStablePlace();
+      setTexts();
     }
 
     sprite.addEventListener('click', ()=>{
@@ -855,15 +883,13 @@
     });
 
     setSize(); applyAnim(); setTexts();
-    loadSprite().then(()=>{
-      placeNow();
-      requestAnimationFrame(()=>placeNow());
-      setTimeout(()=>placeNow(),120);
-      setTimeout(()=>placeNow(),260);
-      setTexts();
-    });
+    loadSprite().then(()=>{ scheduleStablePlace(); setTexts(); });
 
-    window.addEventListener('resize', ()=>{ clearTimeout(window.__fxR); window.__fxR=setTimeout(()=>placeNow(),150); });
+    if('ResizeObserver' in window){
+      const ro = new ResizeObserver(()=>scheduleStablePlace());
+      ro.observe(root);
+    }
+    window.addEventListener('resize', ()=>scheduleStablePlace(), {passive:true});
   })();
   <\/scr` + `ipt>
 </div>`;
@@ -890,6 +916,13 @@
     if(!$("out").value.trim()) $("out").value = buildGeniallyCode();
     await copyText($("out").value);
   });
+
+  // под full screen + любые изменения размера
+  if('ResizeObserver' in window){
+    const ro = new ResizeObserver(()=>{ if(sprite.style.display !== "none") scheduleStablePlace(); });
+    ro.observe(stage);
+  }
+  window.addEventListener("resize", ()=>{ if(sprite.style.display !== "none") scheduleStablePlace(); }, {passive:true});
 
   init();
 })();
