@@ -73,7 +73,7 @@
   .codeBox .cap{font-size:12px;color:var(--muted); margin:0 0 8px;}
   #out{
     width:100%;
-    min-height:160px;
+    min-height:170px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size:12px;
     line-height:1.35;
@@ -176,7 +176,7 @@
       <input id="imgUrl" placeholder="https://.../image.png">
       <div class="hint">
         Если пусто — используется:
-        <b>https://propodgotovkaa-creator.github.io/babochka_2/babushka_2</b>
+        <b>https://propodgotovkaa-creator.github.io/babochka_2/babushka_2</b> (+ расширения .png/.webp/.jpg/.svg)
       </div>
       <div class="warn" id="imgWarn">⚠️ Картинка не загрузилась. Проверь URL/имя файла в репозитории.</div>
     </div>
@@ -184,7 +184,7 @@
     <div class="row">
       <div class="field">
         <label>Размер (px)</label>
-        <input type="range" id="size" min="20" max="220" value="46">
+        <input type="range" id="size" min="20" max="240" value="46">
         <div class="hint"><span id="sizeVal">46</span> px</div>
       </div>
       <div class="field">
@@ -233,11 +233,11 @@
     <div class="row">
       <div class="field">
         <label>Зона стрелок слева/справа (px)</label>
-        <input type="number" id="arrowW" min="60" max="260" value="120">
+        <input type="number" id="arrowW" min="60" max="300" value="120">
       </div>
       <div class="field">
         <label>Высота зоны стрелок (px)</label>
-        <input type="number" id="arrowH" min="120" max="420" value="220">
+        <input type="number" id="arrowH" min="120" max="520" value="220">
       </div>
     </div>
 
@@ -249,7 +249,7 @@
       </div>
       <div class="field">
         <label>&nbsp;</label>
-        <div class="hint">Fullscreen-фикс включён: позиция пересчитывается после стабилизации размеров.</div>
+        <div class="hint">Fullscreen фикс: clientWidth/Height + проверка позиции.</div>
       </div>
     </div>
 
@@ -286,7 +286,7 @@
     return {w:+m[1],h:+m[2]};
   };
 
-  // ✅ твой репозиторий + имя файла (база). Дальше код сам пробует расширения.
+  // ✅ база картинки (имя файла в твоём репо)
   const DEFAULT_SPRITE_BASE = "https://propodgotovkaa-creator.github.io/babochka_2/babushka_2";
 
   const stage = $("stage");
@@ -303,6 +303,13 @@
   const HISTORY_MAX = 14;
   let cellCounts = new Map();
   let lastCellKey = null;
+
+  // ✅ ВАЖНО: берём layout-ширину/высоту (не ломается при transform:scale)
+  function stageWH(){
+    const w = stage.clientWidth || stage.offsetWidth || 1;
+    const h = stage.clientHeight || stage.offsetHeight || 1;
+    return {w: Math.max(1,w), h: Math.max(1,h)};
+  }
 
   function readCfg(){
     const logo = parseBox($("logoBox").value, 170, 120);
@@ -326,18 +333,10 @@
     return cfg;
   }
 
-  function stageRect(){
-    const r = stage.getBoundingClientRect();
-    return {w: Math.max(1,r.width), h: Math.max(1,r.height)};
-  }
-
   function intersects(a, b){
     return !(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h);
   }
-
-  function dist(a,b){
-    return Math.hypot(a.x-b.x, a.y-b.y);
-  }
+  function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
 
   function pushHistory(pt){
     history.unshift(pt);
@@ -345,7 +344,7 @@
   }
 
   function buildForbiddenRects(){
-    const {w,h} = stageRect();
+    const {w,h} = stageWH();
     const p = clamp(cfg.pad, 0, 240);
 
     const bannerH = 92;
@@ -355,8 +354,8 @@
     const logoX = 0;
     const logoY = h - cfg.logoH;
 
-    const aw = clamp(cfg.arrowW, 60, 260);
-    const ah = clamp(cfg.arrowH, 120, 420);
+    const aw = clamp(cfg.arrowW, 60, 300);
+    const ah = clamp(cfg.arrowH, 120, 520);
     const arrowY = (h - ah)/2;
 
     const hudW = 120, hudH = 70;
@@ -372,9 +371,9 @@
     ];
   }
 
-  // ✅ нормальный рандом (центр-координаты + равномерность по клеткам)
+  // ✅ равномерный рандом по сетке + минимум повторов
   function pickPosition(){
-    const {w,h} = stageRect();
+    const {w,h} = stageWH();
     const s = Math.max(10, cfg.size);
     const p = clamp(cfg.pad, 0, 240);
     const half = s/2;
@@ -385,6 +384,7 @@
     const maxY = Math.max(minY, h - p - half);
 
     const forbid = buildForbiddenRects();
+
     const cols = 6, rows = 5;
     const cellW = w / cols;
     const cellH = h / rows;
@@ -395,8 +395,8 @@
     const key=(cx,cy)=>cx + "," + cy;
     const getCount=(k)=>cellCounts.get(k) || 0;
 
-    function ok(cx, cy){
-      const r = {x: cx - half, y: cy - half, w: s, h: s};
+    function okCenter(x,y){
+      const r = {x:x-half, y:y-half, w:s, h:s};
       for(const f of forbid){
         if(intersects(r,f)) return false;
       }
@@ -422,7 +422,6 @@
         cells.push({cx,cy,k,score});
       }
     }
-
     cells.sort((a,b)=>b.score-a.score);
 
     const TOPK = Math.min(12, cells.length);
@@ -451,7 +450,7 @@
     for(let i=0;i<260;i++){
       const x = loX + Math.random()*(hiX-loX);
       const y = loY + Math.random()*(hiY-loY);
-      if(!ok(x,y)) continue;
+      if(!okCenter(x,y)) continue;
       if(lastPt && dist({x,y}, lastPt) < minDistFromLast) continue;
 
       let dSum = 0;
@@ -466,7 +465,7 @@
       for(let i=0;i<1800;i++){
         const x = minX + Math.random()*(maxX-minX);
         const y = minY + Math.random()*(maxY-minY);
-        if(!ok(x,y)) continue;
+        if(!okCenter(x,y)) continue;
         if(lastPt && dist({x,y}, lastPt) < minDistFromLast) continue;
         best = {x,y}; break;
       }
@@ -476,7 +475,6 @@
     pushHistory(best);
     cellCounts.set(chosen.k, getCount(chosen.k) + 1);
     lastCellKey = chosen.k;
-
     return best;
   }
 
@@ -501,11 +499,44 @@
     sprite.style.transform = "translate(-50%,-50%)";
   }
 
-  // ✅ FULLSCREEN FIX: пересчитать позицию после стабилизации размеров
+  // ✅ Fullscreen/resize стабилизация + валидатор позиции
   function sizeLooksBad(){
-    const {w,h} = stageRect();
+    const {w,h} = stageWH();
     return (w < 200 || h < 150);
   }
+
+  function isSpriteInBoundsAndOk(){
+    const {w,h} = stageWH();
+    const s = Math.max(10, cfg.size);
+    const p = clamp(cfg.pad, 0, 240);
+    const half = s/2;
+
+    const x = parseFloat(sprite.style.left) || 0;
+    const y = parseFloat(sprite.style.top)  || 0;
+
+    // в пределах видимой области
+    if(x < p+half || y < p+half || x > w - p - half || y > h - p - half) return false;
+
+    // не пересекает запретные зоны
+    const forbid = buildForbiddenRects();
+    const r = {x:x-half, y:y-half, w:s, h:s};
+    for(const f of forbid){
+      if(intersects(r,f)) return false;
+    }
+    return true;
+  }
+
+  function hardRepositionIfNeeded(){
+    if(sprite.style.display === "none") return;
+    if(!isSpriteInBoundsAndOk()){
+      // несколько попыток найти валидную точку
+      for(let i=0;i<6;i++){
+        placeNow();
+        if(isSpriteInBoundsAndOk()) break;
+      }
+    }
+  }
+
   function placeWhenStable(delay){
     setTimeout(()=>{
       if(sprite.style.display === "none") return;
@@ -514,13 +545,16 @@
         return;
       }
       placeNow();
+      hardRepositionIfNeeded();
     }, delay);
   }
+
   function scheduleStablePlace(){
     placeWhenStable(0);
     placeWhenStable(80);
     placeWhenStable(180);
     placeWhenStable(360);
+    placeWhenStable(640);
   }
 
   function candidates(){
@@ -605,7 +639,6 @@
     sprite.classList.add("pulseHint");
   });
 
-  // UI events
   const inputs = ["imgUrl","size","rounds","pad","pause","anim","dur","task","endText","arrowW","arrowH","logoBox"];
   inputs.forEach(id=>{
     $(id).addEventListener("input", async ()=>{
@@ -631,7 +664,7 @@
     scheduleStablePlace();
   });
 
-  // ✅ генерация DIV-кода для Genially (внутри тот же fullscreen fix и тот же рандом)
+  // ✅ генерация кода для Genially (внутри тот же fullscreen фикс)
   function buildGeniallyCode(){
     const c = readCfg();
     const cfgJson = JSON.stringify({
@@ -697,15 +730,21 @@
     let cellCounts = new Map();
     let lastCellKey = null;
 
-    function rectWH(){ const r=root.getBoundingClientRect(); return {w:Math.max(1,r.width),h:Math.max(1,r.height)}; }
+    // ✅ layout-ширина/высота (не ломается в fullscreen Genially)
+    function wh(){
+      const w = root.clientWidth || root.offsetWidth || 1;
+      const h = root.clientHeight || root.offsetHeight || 1;
+      return {w:Math.max(1,w), h:Math.max(1,h)};
+    }
+
     function padRect(r,p){ return {x:r.x-p,y:r.y-p,w:r.w+p*2,h:r.h+p*2}; }
 
     function buildForbiddenRects(){
-      const {w,h} = rectWH();
+      const {w,h} = wh();
       const p = clamp(cfg.pad||0, 0, 240);
       const bannerH=92, bannerW=Math.min(760, w-220), bannerX=(w-bannerW)/2;
       const logoX=0, logoY=h-(cfg.logoH||120);
-      const aw=clamp(cfg.arrowW||120,60,260), ah=clamp(cfg.arrowH||220,120,420), arrowY=(h-ah)/2;
+      const aw=clamp(cfg.arrowW||120,60,300), ah=clamp(cfg.arrowH||220,120,520), arrowY=(h-ah)/2;
       const hudW=120, hudH=70, hudX=w-hudW, hudY=0;
       return [
         padRect({x:bannerX,y:0,w:bannerW,h:bannerH}, p),
@@ -719,7 +758,7 @@
     function pushHistory(pt){ history.unshift(pt); if(history.length>HISTORY_MAX) history.pop(); }
 
     function pickPosition(){
-      const {w,h} = rectWH();
+      const {w,h} = wh();
       const s = Math.max(10, cfg.size||46);
       const p = clamp(cfg.pad||0, 0, 240);
       const half=s/2;
@@ -737,7 +776,7 @@
       const key=(cx,cy)=>cx+','+cy;
       const getCount=(k)=>cellCounts.get(k)||0;
 
-      function ok(x,y){
+      function okCenter(x,y){
         const r={x:x-half,y:y-half,w:s,h:s};
         for(const f of forbid) if(intersects(r,f)) return false;
         return true;
@@ -775,7 +814,7 @@
       for(let i=0;i<260;i++){
         const x=loX+Math.random()*(hiX-loX);
         const y=loY+Math.random()*(hiY-loY);
-        if(!ok(x,y)) continue;
+        if(!okCenter(x,y)) continue;
         if(lastPt && dist({x,y}, lastPt) < minDistFromLast) continue;
 
         let dSum=0;
@@ -788,7 +827,7 @@
         for(let i=0;i<1800;i++){
           const x=minX+Math.random()*(maxX-minX);
           const y=minY+Math.random()*(maxY-minY);
-          if(!ok(x,y)) continue;
+          if(!okCenter(x,y)) continue;
           if(lastPt && dist({x,y}, lastPt) < minDistFromLast) continue;
           best={x,y}; break;
         }
@@ -798,7 +837,6 @@
       pushHistory(best);
       cellCounts.set(chosen.k, getCount(chosen.k)+1);
       lastCellKey=chosen.k;
-
       return best;
     }
 
@@ -821,21 +859,50 @@
     }
 
     function sizeLooksBad(){
-      const r=root.getBoundingClientRect();
-      return (r.width < 200 || r.height < 150);
+      const {w,h}=wh();
+      return (w<200 || h<150);
     }
+
+    function isOk(){
+      const {w,h}=wh();
+      const s=Math.max(10,cfg.size||46);
+      const p=clamp(cfg.pad||0,0,240);
+      const half=s/2;
+      const x=parseFloat(sprite.style.left)||0;
+      const y=parseFloat(sprite.style.top)||0;
+
+      if(x < p+half || y < p+half || x > w-p-half || y > h-p-half) return false;
+
+      const forbid=buildForbiddenRects();
+      const r={x:x-half,y:y-half,w:s,h:s};
+      for(const f of forbid) if(intersects(r,f)) return false;
+      return true;
+    }
+
+    function hardFix(){
+      if(sprite.style.display==='none') return;
+      if(!isOk()){
+        for(let i=0;i<6;i++){
+          placeNow();
+          if(isOk()) break;
+        }
+      }
+    }
+
     function placeWhenStable(delay){
       setTimeout(()=>{
-        if(sprite.style.display === 'none') return;
+        if(sprite.style.display==='none') return;
         if(sizeLooksBad()){ placeWhenStable(120); return; }
         placeNow();
+        hardFix();
       }, delay);
     }
-    function scheduleStablePlace(){
+    function schedule(){
       placeWhenStable(0);
       placeWhenStable(80);
       placeWhenStable(180);
       placeWhenStable(360);
+      placeWhenStable(640);
     }
 
     async function tryLoadFetch(url){
@@ -869,7 +936,7 @@
       if(found >= (cfg.rounds||7)){ banner.textContent=cfg.endText||''; sprite.style.display='none'; return; }
       sprite.style.display='';
       applyAnim();
-      scheduleStablePlace();
+      schedule();
       setTexts();
     }
 
@@ -883,13 +950,13 @@
     });
 
     setSize(); applyAnim(); setTexts();
-    loadSprite().then(()=>{ scheduleStablePlace(); setTexts(); });
+    loadSprite().then(()=>{ schedule(); setTexts(); });
 
     if('ResizeObserver' in window){
-      const ro = new ResizeObserver(()=>scheduleStablePlace());
+      const ro = new ResizeObserver(()=>schedule());
       ro.observe(root);
     }
-    window.addEventListener('resize', ()=>scheduleStablePlace(), {passive:true});
+    window.addEventListener('resize', ()=>schedule(), {passive:true});
   })();
   <\/scr` + `ipt>
 </div>`;
@@ -917,7 +984,7 @@
     await copyText($("out").value);
   });
 
-  // под full screen + любые изменения размера
+  // реагируем на любые изменения размеров stage (fullscreen тоже)
   if('ResizeObserver' in window){
     const ro = new ResizeObserver(()=>{ if(sprite.style.display !== "none") scheduleStablePlace(); });
     ro.observe(stage);
