@@ -1,239 +1,1033 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,height=device-height,initial-scale=1.0">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,height=device-height,initial-scale=1.0" />
 <title>Редактор «Найди персонажа»</title>
-
 <style>
-html,body{
-  margin:0;
-  height:100%;
-  background:#0b1020;
-  font-family:system-ui,-apple-system,Segoe UI,Roboto;
-  color:#fff;
-}
+  :root{
+    --bg1:#0b1020;
+    --bg2:#0f1832;
+    --panel:rgba(20,24,40,.75);
+    --stroke:rgba(255,255,255,.10);
+    --txt:rgba(255,255,255,.92);
+    --muted:rgba(255,255,255,.65);
+    --btn:#2d6cff;
+    --ok:#22c55e;
+    --bad:#ef4444;
+  }
+  html,body{margin:0;height:100%;background:var(--bg1);font-family:system-ui,-apple-system,Segoe UI,Roboto; color:var(--txt); overflow:hidden;}
+  .app{
+    position:fixed; inset:0;
+    display:grid;
+    grid-template-columns: 380px 1fr;
+    gap:14px;
+    padding:14px;
+    box-sizing:border-box;
+  }
+  @media (max-width: 980px){
+    .app{grid-template-columns:1fr; grid-template-rows:auto 1fr;}
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--stroke);
+    border-radius:18px;
+    padding:14px 14px 12px;
+    overflow:auto;
+    backdrop-filter: blur(10px);
+  }
+  .title{font-size:18px; font-weight:700; margin:0 0 8px;}
+  .desc{font-size:12px; color:var(--muted); line-height:1.35; margin:0 0 12px;}
+  .field{margin:10px 0;}
+  label{display:block;font-size:12px;color:var(--muted); margin:0 0 4px;}
+  input,select,textarea{
+    width:100%; box-sizing:border-box;
+    background:#101a36;
+    border:1px solid rgba(255,255,255,.10);
+    color:var(--txt);
+    border-radius:10px;
+    padding:8px 10px;
+    outline:none;
+  }
+  input[type="range"]{padding:0; height:28px;}
+  textarea{min-height:70px; resize:vertical;}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+  .btnRow{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;}
+  button{
+    border:none; border-radius:12px;
+    padding:10px 12px;
+    cursor:pointer;
+    font-weight:700;
+    color:white;
+    background:rgba(255,255,255,.12);
+  }
+  button.primary{background:var(--btn);}
+  button.success{background:var(--ok); color:#062012;}
+  button.ghost{background:rgba(255,255,255,.10);}
+  .codeBox{
+    margin-top:10px;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:14px;
+    background:rgba(0,0,0,.25);
+    padding:10px;
+  }
+  .codeBox .cap{font-size:12px;color:var(--muted); margin:0 0 8px;}
+  #out{
+    width:100%;
+    min-height:140px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size:12px;
+    line-height:1.35;
+    white-space:pre;
+  }
+  .hint{
+    margin-top:8px;
+    font-size:12px;
+    color:var(--muted);
+  }
+  .warn{
+    margin-top:8px;
+    font-size:12px;
+    color:#ffd27a;
+    display:none;
+  }
 
-.app{
-  position:fixed;
-  inset:0;
-  display:grid;
-  grid-template-columns:360px 1fr;
-  gap:14px;
-  padding:14px;
-  box-sizing:border-box;
-}
+  /* stage */
+  .stage{
+    position:relative;
+    border-radius:18px;
+    overflow:hidden;
+    border:1px solid var(--stroke);
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 8px, rgba(255,255,255,.02) 8px, rgba(255,255,255,.02) 16px),
+      linear-gradient(180deg, rgba(15,24,50,.55), rgba(0,0,0,.25));
+  }
+  .topBanner{
+    position:absolute;
+    top:14px;
+    left:50%;
+    transform:translateX(-50%);
+    background:rgba(0,0,0,.55);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:999px;
+    padding:8px 14px;
+    font-size:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+    pointer-events:none;
+    max-width:min(720px, calc(100% - 180px));
+    text-align:center;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .hud{
+    position:absolute;
+    top:14px;
+    right:14px;
+    display:flex;
+    gap:10px;
+    align-items:center;
+    z-index:5;
+  }
+  .lamp{
+    width:38px; height:38px;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.14);
+    display:grid; place-items:center;
+    cursor:pointer;
+    user-select:none;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+  }
+  .lamp:active{transform:translateY(1px);}
+  .count{
+    background:rgba(0,0,0,.45);
+    border:1px solid rgba(255,255,255,.12);
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:13px;
+    min-width:52px;
+    text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+  }
+  .sprite{
+    position:absolute;
+    left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    cursor:pointer;
+    user-select:none;
+    -webkit-user-drag:none;
+    will-change: transform, opacity, filter;
+  }
 
-.panel{
-  background:rgba(20,24,40,.75);
-  backdrop-filter:blur(8px);
-  border-radius:16px;
-  padding:14px;
-  overflow:auto;
-}
+  /* preview forbidden overlays (debug) */
+  .forbidDebug{
+    position:absolute;
+    pointer-events:none;
+    border:1px dashed rgba(255,255,255,.14);
+    background:rgba(255,255,255,.03);
+    border-radius:10px;
+    z-index:1;
+    display:none;
+  }
+  .showDebug .forbidDebug{display:block;}
 
-.stage{
-  position:relative;
-  border-radius:16px;
-  overflow:hidden;
-  background:
-    repeating-linear-gradient(
-      135deg,
-      rgba(255,255,255,.05) 0,
-      rgba(255,255,255,.05) 8px,
-      rgba(255,255,255,.02) 8px,
-      rgba(255,255,255,.02) 16px
-    );
-}
-
-h1{font-size:18px;margin:0 0 10px}
-label{font-size:12px;opacity:.8}
-input,select,textarea{
-  width:100%;
-  box-sizing:border-box;
-  margin:4px 0 10px;
-  padding:6px 8px;
-  border-radius:8px;
-  border:none;
-  background:#11162b;
-  color:#fff;
-}
-textarea{resize:vertical}
-
-button{
-  padding:8px 10px;
-  border-radius:10px;
-  border:none;
-  cursor:pointer;
-}
-.blue{background:#2d6cff;color:#fff}
-.green{background:#22c55e;color:#000}
-
-.topText{
-  position:absolute;
-  top:16px;
-  left:50%;
-  transform:translateX(-50%);
-  background:rgba(0,0,0,.55);
-  padding:8px 14px;
-  border-radius:999px;
-  font-size:14px;
-  pointer-events:none;
-}
-
-.counter{
-  position:absolute;
-  top:16px;
-  right:16px;
-  background:rgba(0,0,0,.5);
-  padding:6px 10px;
-  border-radius:999px;
-  font-size:13px;
-}
-
-.hintBtn{
-  position:absolute;
-  top:60px;
-  right:16px;
-  width:38px;
-  height:38px;
-  border-radius:50%;
-  background:rgba(255,255,255,.15);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
-}
-
-.sprite{
-  position:absolute;
-  cursor:pointer;
-  user-select:none;
-}
+  /* anim presets */
+  .anim-none{opacity:1;}
+  .anim-pop{animation:popIn var(--dur) ease-out both;}
+  @keyframes popIn{from{transform:translate(-50%,-50%) scale(.6); opacity:0;} to{transform:translate(-50%,-50%) scale(1); opacity:1;}}
+  .anim-fade{animation:fadeIn var(--dur) ease-out both;}
+  @keyframes fadeIn{from{opacity:0;} to{opacity:1;}}
+  .anim-soft{animation:softIn var(--dur) ease-out both;}
+  @keyframes softIn{from{opacity:0; filter:blur(6px);} to{opacity:1; filter:blur(0);}}
+  .pulseHint{animation:pulse 700ms ease-in-out 0s 3;}
+  @keyframes pulse{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.15);}}
 </style>
 </head>
-
 <body>
-<div class="app">
 
-<div class="panel">
-<h1>Редактор «Найди персонажа»</h1>
+<div class="app" id="APP">
+  <div class="panel">
+    <div class="title">Редактор «Найди персонажа»</div>
+    <p class="desc">
+      Это редактор (панель слева) + предпросмотр (справа).<br>
+      1) Настрой параметры → 2) Нажми «Получить код» → 3) Вставь результат в Genially (HTML/Embed).
+    </p>
 
-<label>URL картинки персонажа</label>
-<input id="imgUrl" placeholder="если пусто — babushka_2">
+    <div class="field">
+      <label>URL картинки персонажа (можно оставить пустым)</label>
+      <input id="imgUrl" placeholder="https://.../image.png">
+      <div class="hint">Если пусто — возьмём локальный файл рядом с <b>index.html</b>: <b>babushka_2</b> или <b>babushka_2.png</b></div>
+      <div class="warn" id="imgWarn">⚠️ Картинка не загрузилась. Проверь URL или имя локального файла.</div>
+    </div>
 
-<label>Размер (px)</label>
-<input type="range" min="24" max="160" value="46" id="size">
+    <div class="row">
+      <div class="field">
+        <label>Размер (px)</label>
+        <input type="range" id="size" min="20" max="180" value="46">
+        <div class="hint"><span id="sizeVal">46</span> px</div>
+      </div>
+      <div class="field">
+        <label>Количество находок (раундов)</label>
+        <input type="number" id="rounds" min="1" max="50" value="7">
+      </div>
+    </div>
 
-<label>Количество находок</label>
-<input type="number" min="1" max="20" value="7" id="rounds">
+    <div class="row">
+      <div class="field">
+        <label>Отступ от краёв (px)</label>
+        <input type="number" id="pad" min="0" max="240" value="12">
+      </div>
+      <div class="field">
+        <label>Пауза между раундами (мс)</label>
+        <input type="number" id="pause" min="0" max="5000" value="200">
+      </div>
+    </div>
 
-<label>Инструкция</label>
-<input id="task" value="Найди бабочку и нажми на неё!">
+    <div class="row">
+      <div class="field">
+        <label>Анимация появления</label>
+        <select id="anim">
+          <option value="soft">soft fade (медленно)</option>
+          <option value="fade">fade</option>
+          <option value="pop">pop</option>
+          <option value="none">без анимации</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Длительность анимации (мс)</label>
+        <input type="number" id="dur" min="0" max="5000" value="1100">
+      </div>
+    </div>
 
-<label>Текст в конце</label>
-<textarea id="endText">Молодец! Приходи играть ещё раз 😊</textarea>
+    <div class="field">
+      <label>Инструкция (плашка сверху по центру)</label>
+      <input id="task" value="Найди бабочку и нажми на неё!">
+    </div>
 
-<button class="blue" onclick="start()">Предпросмотр</button>
-</div>
+    <div class="field">
+      <label>Текст в конце игры</label>
+      <textarea id="endText">Молодец! Приходи играть ещё раз 😊</textarea>
+    </div>
 
-<div class="stage" id="stage">
-  <div class="topText" id="topText"></div>
-  <div class="counter" id="counter"></div>
-  <div class="hintBtn" onclick="hint()">💡</div>
-</div>
+    <div class="row">
+      <div class="field">
+        <label>Зона стрелок слева/справа (px)</label>
+        <input type="number" id="arrowW" min="60" max="220" value="120">
+        <div class="hint">Ширина запретной зоны по краям (для стрелок назад/вперёд)</div>
+      </div>
+      <div class="field">
+        <label>Высота зоны стрелок (px)</label>
+        <input type="number" id="arrowH" min="120" max="360" value="220">
+        <div class="hint">Высота запретной зоны по центру слева/справа</div>
+      </div>
+    </div>
 
+    <div class="row">
+      <div class="field">
+        <label>Лого Genially слева снизу (w×h, px)</label>
+        <input type="text" id="logoBox" value="170x120">
+        <div class="hint">Формат: 170x120</div>
+      </div>
+      <div class="field">
+        <label>Показывать запретные зоны (debug)</label>
+        <select id="debug">
+          <option value="0">нет</option>
+          <option value="1">да</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="btnRow">
+      <button class="primary" id="btnCode">Получить код</button>
+      <button class="success" id="btnCopy">Копировать код</button>
+      <button class="ghost" id="btnReset">Сброс</button>
+    </div>
+
+    <div class="codeBox">
+      <div class="cap">HTML-код для Genially (DIV + STYLE + SCRIPT)</div>
+      <textarea id="out" readonly placeholder="Нажми «Получить код»"></textarea>
+      <div class="hint">Вставляй в Genially → <b>Insert → Others → Embed → Insert external content</b> (HTML/Embed).</div>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="topBanner" id="banner">Найди бабочку и нажми на неё!</div>
+
+    <div class="hud">
+      <div class="lamp" id="lamp" title="Подсказка">💡</div>
+      <div class="count" id="count">0/7</div>
+    </div>
+
+    <!-- debug forbidden rectangles -->
+    <div class="forbidDebug" id="dbg1"></div>
+    <div class="forbidDebug" id="dbg2"></div>
+    <div class="forbidDebug" id="dbg3"></div>
+    <div class="forbidDebug" id="dbg4"></div>
+    <div class="forbidDebug" id="dbg5"></div>
+
+    <img class="sprite" id="sprite" alt="sprite" />
+  </div>
 </div>
 
 <script>
-const stage=document.getElementById('stage');
-const topText=document.getElementById('topText');
-const counter=document.getElementById('counter');
-
-let sprite=null,found=0,total=7,size=46;
-
-function loadImg(){
-  const url=document.getElementById('imgUrl').value.trim();
-  return url || './babushka_2';
-}
-
-function forbiddenRects(){
-  const r=[];
-  const w=stage.clientWidth,h=stage.clientHeight;
-
-  // инструкция
-  r.push({x:w/2-160,y:0,w:320,h:90});
-  // логотип genially
-  r.push({x:0,y:h-120,w:160,h:120});
-  // стрелки
-  r.push({x:0,y:h/2-110,w:120,h:220});
-  r.push({x:w-120,y:h/2-110,w:120,h:220});
-
-  return r;
-}
-
-function intersects(x,y,s,fr){
-  return !(x+s<fr.x||x>fr.x+fr.w||y+s<fr.y||y>fr.y+fr.h);
-}
-
-function randomPos(){
-  const w=stage.clientWidth,h=stage.clientHeight;
-  const fr=forbiddenRects();
-  for(let i=0;i<200;i++){
-    const x=Math.random()*(w-size);
-    const y=Math.random()*(h-size);
-    if(!fr.some(f=>intersects(x,y,size,f))){
-      return {x,y};
-    }
-  }
-  return {x:50,y:120};
-}
-
-function place(){
-  const p=randomPos();
-  sprite.style.left=p.x+'px';
-  sprite.style.top=p.y+'px';
-}
-
-function start(){
-  stage.innerHTML='';
-  stage.appendChild(topText);
-  stage.appendChild(counter);
-  stage.appendChild(document.querySelector('.hintBtn'));
-
-  found=0;
-  total=+document.getElementById('rounds').value;
-  size=+document.getElementById('size').value;
-
-  topText.textContent=document.getElementById('task').value;
-  counter.textContent=`0/${total}`;
-
-  sprite=document.createElement('img');
-  sprite.src=loadImg();
-  sprite.className='sprite';
-  sprite.style.width=size+'px';
-  sprite.onclick=()=>{
-    found++;
-    counter.textContent=`${found}/${total}`;
-    if(found>=total){
-      topText.textContent=document.getElementById('endText').value;
-      sprite.remove();
-    }else{
-      place();
-    }
+(() => {
+  // ---------- helpers ----------
+  const $ = (id)=>document.getElementById(id);
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const parseBox=(s,defW,defH)=>{
+    const m = String(s||"").toLowerCase().match(/(\d+)\s*x\s*(\d+)/);
+    if(!m) return {w:defW,h:defH};
+    return {w:+m[1],h:+m[2]};
   };
-  stage.appendChild(sprite);
-  place();
-}
 
-function hint(){
-  if(sprite){
-    sprite.animate(
-      [{opacity:1},{opacity:.2},{opacity:1}],
-      {duration:600,iterations:2}
-    );
+  // ---------- state ----------
+  const stage = $("stage");
+  const sprite = $("sprite");
+  const banner = $("banner");
+  const count = $("count");
+  const lamp  = $("lamp");
+  const imgWarn = $("imgWarn");
+  const APP = $("APP");
+
+  let cfg = {};
+  let found = 0;
+  let history = []; // positions history to avoid repeats
+  const HISTORY_MAX = 12;
+
+  function readCfg(){
+    const logo = parseBox($("logoBox").value, 170, 120);
+    cfg = {
+      imgUrl: $("imgUrl").value.trim(),
+      size: +$("size").value,
+      rounds: +$("rounds").value,
+      pad: +$("pad").value,
+      pause: +$("pause").value,
+      anim: $("anim").value,
+      dur: +$("dur").value,
+      task: $("task").value,
+      endText: $("endText").value,
+      arrowW: +$("arrowW").value,
+      arrowH: +$("arrowH").value,
+      logoW: logo.w,
+      logoH: logo.h,
+      debug: $("debug").value === "1",
+    };
+    $("sizeVal").textContent = String(cfg.size);
+    return cfg;
   }
-}
+
+  function stageRect(){
+    const r = stage.getBoundingClientRect();
+    return {w: r.width, h:r.height};
+  }
+
+  function buildForbiddenRects(){
+    const {w,h} = stageRect();
+    const p = clamp(cfg.pad, 0, 240);
+
+    // 1) instruction banner (top center)
+    // reserve some max width & height
+    const bannerH = 92;
+    const bannerW = Math.min(760, w - 220);
+    const bannerX = (w - bannerW)/2;
+    const bannerY = 0;
+
+    // 2) logo genially bottom-left
+    const logoX = 0;
+    const logoY = h - cfg.logoH;
+
+    // 3) arrows left/right
+    const aw = clamp(cfg.arrowW, 60, 220);
+    const ah = clamp(cfg.arrowH, 120, 360);
+    const arrowY = (h - ah)/2;
+
+    // 4) top-right HUD (lamp+counter) small area
+    const hudW = 120;
+    const hudH = 70;
+    const hudX = w - hudW;
+    const hudY = 0;
+
+    // add padding around forbidden areas a bit
+    const padRect = (r)=>({x:r.x - p, y:r.y - p, w:r.w + p*2, h:r.h + p*2});
+
+    const rects = [
+      padRect({x:bannerX,y:bannerY,w:bannerW,h:bannerH}),
+      padRect({x:logoX,y:logoY,w:cfg.logoW,h:cfg.logoH}),
+      padRect({x:0,y:arrowY,w:aw,h:ah}),
+      padRect({x:w-aw,y:arrowY,w:aw,h:ah}),
+      padRect({x:hudX,y:hudY,w:hudW,h:hudH}),
+    ];
+
+    // debug draw
+    const dbg = [$("dbg1"),$("dbg2"),$("dbg3"),$("dbg4"),$("dbg5")];
+    dbg.forEach((el,i)=>{
+      const r = rects[i];
+      el.style.left = r.x+"px";
+      el.style.top  = r.y+"px";
+      el.style.width = r.w+"px";
+      el.style.height= r.h+"px";
+    });
+
+    return rects;
+  }
+
+  function intersects(a, b){
+    return !(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h);
+  }
+
+  function pushHistory(pt){
+    history.unshift(pt);
+    if(history.length > HISTORY_MAX) history.pop();
+  }
+
+  function dist(a,b){
+    const dx = (a.x-b.x), dy=(a.y-b.y);
+    return Math.hypot(dx,dy);
+  }
+
+  // КЛЮЧЕВОЕ: новый алгоритм позиции.
+  // 1) делим сцену на сетку 5x4
+  // 2) выбираем ячейки в разном порядке
+  // 3) в каждой ячейке пробуем много точек
+  // 4) оцениваем "насколько далеко от истории"
+  function pickPosition(){
+    const {w,h} = stageRect();
+    const s = Math.max(10, cfg.size);
+    const p = clamp(cfg.pad, 0, 240);
+
+    // safe bounds
+    const minX = p;
+    const minY = p;
+    const maxX = Math.max(minX, w - p - s);
+    const maxY = Math.max(minY, h - p - s);
+
+    const forbid = buildForbiddenRects();
+
+    // if stage too small, fallback
+    if(maxX - minX < 1 || maxY - minY < 1){
+      return {x:minX, y:minY};
+    }
+
+    // grid
+    const cols = 5, rows = 4;
+    const cellW = w / cols;
+    const cellH = h / rows;
+
+    // cell usage (avoid repeating same cells)
+    const cellScore = [];
+    for(let cy=0; cy<rows; cy++){
+      for(let cx=0; cx<cols; cx++){
+        // center of cell
+        const c = {x:cx*cellW + cellW/2, y:cy*cellH + cellH/2};
+        // score = farther from recent positions
+        let score = 0;
+        if(history.length){
+          const d0 = dist(c, history[0]);
+          const d1 = history[1] ? dist(c, history[1]) : d0;
+          score = d0*1.0 + d1*0.4 + Math.random()*50;
+        }else{
+          score = Math.random()*1000;
+        }
+        cellScore.push({cx,cy,score});
+      }
+    }
+    // sort by best score desc
+    cellScore.sort((a,b)=>b.score-a.score);
+
+    function ok(x,y){
+      const r = {x, y, w:s, h:s};
+      for(const f of forbid){
+        if(intersects(r,f)) return false;
+      }
+      return true;
+    }
+
+    // try best cells first
+    for(const cs of cellScore){
+      const cellX0 = cs.cx * cellW;
+      const cellY0 = cs.cy * cellH;
+
+      // compute allowed region inside cell
+      const loX = clamp(cellX0 + p, minX, maxX);
+      const hiX = clamp(cellX0 + cellW - p - s, minX, maxX);
+      const loY = clamp(cellY0 + p, minY, maxY);
+      const hiY = clamp(cellY0 + cellH - p - s, minY, maxY);
+
+      if(hiX < loX || hiY < loY) continue;
+
+      // many attempts in this cell
+      let best = null;
+      let bestScore = -Infinity;
+      for(let i=0;i<60;i++){
+        const x = loX + Math.random()*(hiX-loX);
+        const y = loY + Math.random()*(hiY-loY);
+        if(!ok(x,y)) continue;
+
+        // distance score from history (avoid repeats)
+        let d = 0;
+        for(let k=0;k<Math.min(history.length,6);k++){
+          d += dist({x,y}, history[k]) * (k===0?1:0.35);
+        }
+        const sc = d + Math.random()*30;
+        if(sc > bestScore){
+          bestScore = sc;
+          best = {x,y};
+        }
+      }
+      if(best){
+        pushHistory(best);
+        return best;
+      }
+    }
+
+    // fallback: relax and brute force anywhere
+    for(let i=0;i<500;i++){
+      const x = minX + Math.random()*(maxX-minX);
+      const y = minY + Math.random()*(maxY-minY);
+      if(ok(x,y)){
+        const pt={x,y};
+        pushHistory(pt);
+        return pt;
+      }
+    }
+
+    // final fallback
+    const pt={x:minX,y:minY};
+    pushHistory(pt);
+    return pt;
+  }
+
+  function setSpriteSize(){
+    sprite.style.width = cfg.size + "px";
+    sprite.style.height = cfg.size + "px";
+  }
+
+  function applyAnim(){
+    sprite.style.setProperty("--dur", Math.max(0,cfg.dur)+"ms");
+    sprite.classList.remove("anim-none","anim-pop","anim-fade","anim-soft");
+    if(cfg.anim==="none") sprite.classList.add("anim-none");
+    if(cfg.anim==="pop")  sprite.classList.add("anim-pop");
+    if(cfg.anim==="fade") sprite.classList.add("anim-fade");
+    if(cfg.anim==="soft") sprite.classList.add("anim-soft");
+  }
+
+  function placeNow(){
+    const pt = pickPosition();
+    sprite.style.left = pt.x + "px";
+    sprite.style.top  = pt.y + "px";
+    // sprite uses translate(-50%,-50%), so move anchor to center:
+    // we set left/top as center coords
+    sprite.style.transform = "translate(-50%,-50%)";
+  }
+
+  function spriteLoadUrl(){
+    // Если пусто — пробуем разные варианты рядом с index.html
+    const u = (cfg.imgUrl||"").trim();
+    if(u) return [u];
+
+    // ВАЖНО: у тебя файл может быть без расширения, либо .png
+    // пробуем по очереди
+    return ["./babushka_2", "./babushka_2.png", "./babushka_2.webp", "./babushka_2.jpg"];
+  }
+
+  async function setSpriteSource(){
+    imgWarn.style.display = "none";
+    const list = spriteLoadUrl();
+    // пробуем загрузить по очереди
+    for(const u of list){
+      const ok = await new Promise(res=>{
+        const im = new Image();
+        im.onload = ()=>res(true);
+        im.onerror = ()=>res(false);
+        im.src = u + (u.includes("?") ? "&" : "?") + "v=" + Date.now();
+      });
+      if(ok){
+        // ставим без cache-bust, иначе Genially может не кешировать нормально
+        sprite.src = u;
+        return true;
+      }
+    }
+    // ничего не загрузилось
+    sprite.removeAttribute("src");
+    imgWarn.style.display = "block";
+    return false;
+  }
+
+  function updateUI(){
+    readCfg();
+    banner.textContent = cfg.task || "";
+    count.textContent = `${found}/${cfg.rounds}`;
+    APP.classList.toggle("showDebug", cfg.debug);
+    setSpriteSize();
+    applyAnim();
+  }
+
+  // ---------- preview/game in editor ----------
+  function resetGame(){
+    found = 0;
+    history = [];
+    updateUI();
+    placeNow();
+  }
+
+  function nextRound(){
+    if(found >= cfg.rounds){
+      banner.textContent = cfg.endText || "";
+      sprite.style.display = "none";
+      return;
+    }
+    sprite.style.display = "";
+    applyAnim();
+    placeNow();
+  }
+
+  sprite.addEventListener("click", async ()=>{
+    // click = found
+    found++;
+    updateUI();
+    sprite.style.display = "none";
+    // пауза
+    const pause = Math.max(0, cfg.pause|0);
+    if(pause) await new Promise(r=>setTimeout(r,pause));
+    nextRound();
+  });
+
+  lamp.addEventListener("click", ()=>{
+    // подсказка: пульсация
+    sprite.classList.remove("pulseHint");
+    // reflow
+    void sprite.offsetWidth;
+    sprite.classList.add("pulseHint");
+  });
+
+  // ---------- code generator for Genially ----------
+  function escHtml(s){
+    return String(s)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;");
+  }
+
+  function buildGeniallyCode(){
+    // Всё самодостаточно: DIV + STYLE + SCRIPT
+    // Внутри — тот же алгоритм позиции, запретные зоны и подсказка.
+
+    const c = readCfg();
+    const cfgJson = JSON.stringify({
+      imgUrl: c.imgUrl || "",
+      size: c.size,
+      rounds: c.rounds,
+      pad: c.pad,
+      pause: c.pause,
+      anim: c.anim,
+      dur: c.dur,
+      task: c.task || "",
+      endText: c.endText || "",
+      arrowW: c.arrowW,
+      arrowH: c.arrowH,
+      logoW: c.logoW,
+      logoH: c.logoH
+    });
+
+    // ВСТАВКА: генерируем готовый блок
+    return `<div id="FX_ROOT">
+  <style>
+    #FX_ROOT{position:relative;width:100%;height:100%;overflow:hidden;background:transparent;font-family:system-ui,-apple-system,Segoe UI,Roboto;}
+    #FX_ROOT .topBanner{
+      position:absolute; top:14px; left:50%; transform:translateX(-50%);
+      background:rgba(0,0,0,.55);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:999px; padding:8px 14px; font-size:14px; color:rgba(255,255,255,.92);
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+      pointer-events:none;
+      max-width:min(720px, calc(100% - 180px));
+      text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      z-index:5;
+    }
+    #FX_ROOT .hud{
+      position:absolute; top:14px; right:14px; display:flex; gap:10px; align-items:center; z-index:6;
+    }
+    #FX_ROOT .lamp{
+      width:38px; height:38px; border-radius:50%;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.14);
+      display:grid; place-items:center; cursor:pointer; user-select:none;
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+    #FX_ROOT .count{
+      background:rgba(0,0,0,.45);
+      border:1px solid rgba(255,255,255,.12);
+      padding:6px 10px; border-radius:999px; font-size:13px; color:rgba(255,255,255,.92);
+      min-width:52px; text-align:center;
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+    #FX_ROOT .sprite{
+      position:absolute; left:50%; top:50%;
+      transform:translate(-50%,-50%);
+      cursor:pointer; user-select:none; -webkit-user-drag:none;
+      will-change: transform, opacity, filter;
+      z-index:4;
+    }
+    #FX_ROOT .anim-none{opacity:1;}
+    #FX_ROOT .anim-pop{animation:popIn var(--dur) ease-out both;}
+    @keyframes popIn{from{transform:translate(-50%,-50%) scale(.6);opacity:0;}to{transform:translate(-50%,-50%) scale(1);opacity:1;}}
+    #FX_ROOT .anim-fade{animation:fadeIn var(--dur) ease-out both;}
+    @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+    #FX_ROOT .anim-soft{animation:softIn var(--dur) ease-out both;}
+    @keyframes softIn{from{opacity:0;filter:blur(6px);}to{opacity:1;filter:blur(0);}}
+    #FX_ROOT .pulseHint{animation:pulse 700ms ease-in-out 0s 3;}
+    @keyframes pulse{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.15);}}
+  </style>
+
+  <div class="topBanner" id="fx_banner"></div>
+  <div class="hud">
+    <div class="lamp" id="fx_lamp" title="Подсказка">💡</div>
+    <div class="count" id="fx_count"></div>
+  </div>
+  <img class="sprite" id="fx_sprite" alt="sprite" />
+
+  <script>
+  (function(){
+    const root = document.getElementById('FX_ROOT');
+    const banner = document.getElementById('fx_banner');
+    const count  = document.getElementById('fx_count');
+    const lamp   = document.getElementById('fx_lamp');
+    const sprite = document.getElementById('fx_sprite');
+
+    const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+    const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+
+    const cfg = ${cfgJson};
+    let found = 0;
+    let history = [];
+    const HISTORY_MAX = 12;
+
+    function rectWH(){
+      const r = root.getBoundingClientRect();
+      return {w:r.width, h:r.height};
+    }
+
+    function intersects(a,b){
+      return !(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h);
+    }
+
+    function buildForbiddenRects(){
+      const {w,h} = rectWH();
+      const p = clamp(cfg.pad||0, 0, 240);
+
+      const bannerH = 92;
+      const bannerW = Math.min(760, w - 220);
+      const bannerX = (w - bannerW)/2;
+      const bannerY = 0;
+
+      const logoX = 0;
+      const logoY = h - (cfg.logoH||120);
+
+      const aw = clamp(cfg.arrowW||120, 60, 220);
+      const ah = clamp(cfg.arrowH||220, 120, 360);
+      const arrowY = (h - ah)/2;
+
+      const hudW = 120, hudH = 70;
+      const hudX = w - hudW, hudY = 0;
+
+      const padRect = (r)=>({x:r.x - p, y:r.y - p, w:r.w + p*2, h:r.h + p*2});
+
+      return [
+        padRect({x:bannerX,y:bannerY,w:bannerW,h:bannerH}),
+        padRect({x:logoX,y:logoY,w:(cfg.logoW||170),h:(cfg.logoH||120)}),
+        padRect({x:0,y:arrowY,w:aw,h:ah}),
+        padRect({x:w-aw,y:arrowY,w:aw,h:ah}),
+        padRect({x:hudX,y:hudY,w:hudW,h:hudH}),
+      ];
+    }
+
+    function pushHistory(pt){
+      history.unshift(pt);
+      if(history.length > HISTORY_MAX) history.pop();
+    }
+
+    function pickPosition(){
+      const {w,h} = rectWH();
+      const s = Math.max(10, cfg.size||46);
+      const p = clamp(cfg.pad||0, 0, 240);
+
+      const minX = p;
+      const minY = p;
+      const maxX = Math.max(minX, w - p - s);
+      const maxY = Math.max(minY, h - p - s);
+
+      const forbid = buildForbiddenRects();
+      if(maxX - minX < 1 || maxY - minY < 1){
+        return {x:minX, y:minY};
+      }
+
+      const cols = 5, rows = 4;
+      const cellW = w / cols;
+      const cellH = h / rows;
+
+      const cellScore = [];
+      for(let cy=0; cy<rows; cy++){
+        for(let cx=0; cx<cols; cx++){
+          const c = {x:cx*cellW + cellW/2, y:cy*cellH + cellH/2};
+          let score = 0;
+          if(history.length){
+            const d0 = dist(c, history[0]);
+            const d1 = history[1] ? dist(c, history[1]) : d0;
+            score = d0*1.0 + d1*0.4 + Math.random()*50;
+          }else{
+            score = Math.random()*1000;
+          }
+          cellScore.push({cx,cy,score});
+        }
+      }
+      cellScore.sort((a,b)=>b.score-a.score);
+
+      function ok(x,y){
+        const r = {x, y, w:s, h:s};
+        for(const f of forbid) if(intersects(r,f)) return false;
+        return true;
+      }
+
+      for(const cs of cellScore){
+        const cellX0 = cs.cx * cellW;
+        const cellY0 = cs.cy * cellH;
+
+        const loX = clamp(cellX0 + p, minX, maxX);
+        const hiX = clamp(cellX0 + cellW - p - s, minX, maxX);
+        const loY = clamp(cellY0 + p, minY, maxY);
+        const hiY = clamp(cellY0 + cellH - p - s, minY, maxY);
+        if(hiX < loX || hiY < loY) continue;
+
+        let best=null, bestScore=-Infinity;
+        for(let i=0;i<60;i++){
+          const x = loX + Math.random()*(hiX-loX);
+          const y = loY + Math.random()*(hiY-loY);
+          if(!ok(x,y)) continue;
+
+          let d=0;
+          for(let k=0;k<Math.min(history.length,6);k++){
+            d += dist({x,y}, history[k]) * (k===0?1:0.35);
+          }
+          const sc = d + Math.random()*30;
+          if(sc>bestScore){bestScore=sc; best={x,y};}
+        }
+        if(best){pushHistory(best); return best;}
+      }
+
+      for(let i=0;i<500;i++){
+        const x = minX + Math.random()*(maxX-minX);
+        const y = minY + Math.random()*(maxY-minY);
+        if(ok(x,y)){const pt={x,y}; pushHistory(pt); return pt;}
+      }
+
+      const pt={x:minX,y:minY}; pushHistory(pt); return pt;
+    }
+
+    function applyAnim(){
+      sprite.style.setProperty('--dur', Math.max(0, cfg.dur||0)+'ms');
+      sprite.classList.remove('anim-none','anim-pop','anim-fade','anim-soft');
+      if(cfg.anim==='none') sprite.classList.add('anim-none');
+      if(cfg.anim==='pop')  sprite.classList.add('anim-pop');
+      if(cfg.anim==='fade') sprite.classList.add('anim-fade');
+      if(cfg.anim==='soft') sprite.classList.add('anim-soft');
+    }
+
+    function setSize(){
+      const s = cfg.size||46;
+      sprite.style.width = s+'px';
+      sprite.style.height= s+'px';
+    }
+
+    function setTexts(){
+      banner.textContent = cfg.task || '';
+      count.textContent  = found + '/' + (cfg.rounds||7);
+    }
+
+    function spriteLoadCandidates(){
+      const u = (cfg.imgUrl||'').trim();
+      if(u) return [u];
+      return ['./babushka_2','./babushka_2.png','./babushka_2.webp','./babushka_2.jpg'];
+    }
+
+    function tryLoad(list, i){
+      return new Promise((res)=>{
+        if(i>=list.length){res(false); return;}
+        const url=list[i];
+        const im=new Image();
+        im.onload=()=>{sprite.src=url; res(true);};
+        im.onerror=()=>{tryLoad(list,i+1).then(res);};
+        im.src = url + (url.includes('?')?'&':'?') + 'v=' + Date.now();
+      });
+    }
+
+    function placeNow(){
+      const pt = pickPosition();
+      sprite.style.left = pt.x+'px';
+      sprite.style.top  = pt.y+'px';
+      sprite.style.transform = 'translate(-50%,-50%)';
+    }
+
+    function nextRound(){
+      if(found >= (cfg.rounds||7)){
+        banner.textContent = cfg.endText || '';
+        sprite.style.display='none';
+        return;
+      }
+      sprite.style.display='';
+      applyAnim();
+      placeNow();
+      setTexts();
+    }
+
+    sprite.addEventListener('click', ()=>{
+      found++;
+      sprite.style.display='none';
+      setTexts();
+      const pause = Math.max(0, cfg.pause||0);
+      setTimeout(nextRound, pause);
+    });
+
+    lamp.addEventListener('click', ()=>{
+      sprite.classList.remove('pulseHint');
+      void sprite.offsetWidth;
+      sprite.classList.add('pulseHint');
+    });
+
+    // init
+    setSize();
+    applyAnim();
+    setTexts();
+    tryLoad(spriteLoadCandidates(),0).then(()=>{
+      // start position after image loads (or not)
+      placeNow();
+      setTexts();
+    });
+
+    // responsive reposition on resize
+    let t=null;
+    window.addEventListener('resize', ()=>{
+      clearTimeout(t);
+      t=setTimeout(()=>{placeNow();}, 150);
+    });
+  })();
+  </script>
+</div>`;
+  }
+
+  // ---------- clipboard ----------
+  async function copyText(text){
+    try{
+      await navigator.clipboard.writeText(text);
+      return true;
+    }catch(e){
+      // fallback
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position="fixed";
+      ta.style.left="-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    }
+  }
+
+  // ---------- UI events ----------
+  function bind(){
+    const inputs = ["imgUrl","size","rounds","pad","pause","anim","dur","task","endText","arrowW","arrowH","logoBox","debug"];
+    inputs.forEach(id=>{
+      $(id).addEventListener("input", ()=>{
+        updateUI();
+        // не сбрасываем прогресс при каждом вводе — только перепозиционируем/обновляем
+        setSpriteSource().then(()=>{ placeNow(); });
+        count.textContent = `${found}/${cfg.rounds}`;
+      });
+      $(id).addEventListener("change", ()=>{
+        updateUI();
+        setSpriteSource().then(()=>{ placeNow(); });
+      });
+    });
+
+    $("btnReset").addEventListener("click", ()=>{
+      // мягкий сброс только игры и истории
+      resetGame();
+      setSpriteSource().then(()=>{ sprite.style.display=""; });
+    });
+
+    $("btnCode").addEventListener("click", ()=>{
+      const code = buildGeniallyCode();
+      $("out").value = code;
+      $("out").scrollTop = 0;
+    });
+
+    $("btnCopy").addEventListener("click", async ()=>{
+      const val = $("out").value.trim();
+      if(!val){
+        const code = buildGeniallyCode();
+        $("out").value = code;
+      }
+      await copyText($("out").value);
+    });
+  }
+
+  // ---------- init ----------
+  async function init(){
+    readCfg();
+    updateUI();
+    bind();
+
+    // авто-предпросмотр как раньше: сразу показываем бабочку
+    await setSpriteSource();
+    resetGame();
+    sprite.style.display = "";
+  }
+
+  init();
+})();
 </script>
+
 </body>
 </html>
