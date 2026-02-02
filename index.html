@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="ru">
 <head>
@@ -11,64 +10,68 @@
     --txt:rgba(255,255,255,.92); --muted:rgba(255,255,255,.65);
     --btn:#2d6cff; --ok:#22c55e;
   }
-  html,body{margin:0;height:100%;background:var(--bg1);font-family:system-ui,-apple-system,Segoe UI,Roboto; color:var(--txt); overflow:hidden;}
-  .app{position:fixed; inset:0; display:grid; grid-template-columns: 380px 1fr; gap:14px; padding:14px; box-sizing:border-box;}
-  @media (max-width: 980px){ .app{grid-template-columns:1fr; grid-template-rows:auto 1fr;} }
-  .panel{background:var(--panel); border:1px solid var(--stroke); border-radius:18px; padding:14px 14px 12px; overflow:auto; backdrop-filter: blur(10px);}
-  .title{font-size:18px; font-weight:700; margin:0 0 8px;}
-  .desc{font-size:12px; color:var(--muted); line-height:1.35; margin:0 0 12px;}
+  html,body{margin:0;height:100%;background:var(--bg1);font-family:system-ui,-apple-system,Segoe UI,Roboto;color:var(--txt);overflow:hidden;}
+  .app{position:fixed;inset:0;display:grid;grid-template-columns:380px 1fr;gap:14px;padding:14px;box-sizing:border-box;}
+  @media (max-width: 980px){.app{grid-template-columns:1fr;grid-template-rows:auto 1fr;}}
+  .panel{background:var(--panel);border:1px solid var(--stroke);border-radius:18px;padding:14px;overflow:auto;backdrop-filter:blur(10px);}
+  .title{font-size:18px;font-weight:700;margin:0 0 8px;}
+  .desc{font-size:12px;color:var(--muted);line-height:1.35;margin:0 0 12px;}
   .field{margin:10px 0;}
-  label{display:block;font-size:12px;color:var(--muted); margin:0 0 4px;}
-  input,select,textarea{width:100%; box-sizing:border-box; background:#101a36; border:1px solid rgba(255,255,255,.10); color:var(--txt); border-radius:10px; padding:8px 10px; outline:none;}
-  input[type="range"]{padding:0; height:28px;}
-  textarea{min-height:70px; resize:vertical;}
-  .row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-  .btnRow{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;}
-  button{border:none; border-radius:12px; padding:10px 12px; cursor:pointer; font-weight:700; color:white; background:rgba(255,255,255,.12);}
+  label{display:block;font-size:12px;color:var(--muted);margin:0 0 4px;}
+  input,select,textarea{width:100%;box-sizing:border-box;background:#101a36;border:1px solid rgba(255,255,255,.10);color:var(--txt);border-radius:10px;padding:8px 10px;outline:none;}
+  input[type="range"]{padding:0;height:28px;}
+  textarea{min-height:70px;resize:vertical;}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .btnRow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+  button{border:none;border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:700;color:white;background:rgba(255,255,255,.12);}
   button.primary{background:var(--btn);}
-  button.success{background:var(--ok); color:#062012;}
+  button.success{background:var(--ok);color:#062012;}
   button.ghost{background:rgba(255,255,255,.10);}
-  .codeBox{margin-top:10px; border:1px solid rgba(255,255,255,.10); border-radius:14px; background:rgba(0,0,0,.25); padding:10px;}
-  .codeBox .cap{font-size:12px;color:var(--muted); margin:0 0 8px;}
-  #out{width:100%; min-height:190px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size:12px; line-height:1.35; white-space:pre;}
+  .codeBox{margin-top:10px;border:1px solid rgba(255,255,255,.10);border-radius:14px;background:rgba(0,0,0,.25);padding:10px;}
+  .codeBox .cap{font-size:12px;color:var(--muted);margin:0 0 8px;}
+  #out{width:100%;min-height:200px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.35;white-space:pre;}
   .hint{margin-top:8px;font-size:12px;color:var(--muted);}
   .warn{margin-top:8px;font-size:12px;color:#ffd27a;display:none;}
 
-  .stage{position:relative; border-radius:18px; overflow:hidden; border:1px solid var(--stroke);
+  .stage{position:relative;border-radius:18px;overflow:hidden;border:1px solid var(--stroke);
     background:
       repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 8px, rgba(255,255,255,.02) 8px, rgba(255,255,255,.02) 16px),
       linear-gradient(180deg, rgba(15,24,50,.55), rgba(0,0,0,.25));
   }
-  .topBanner{position:absolute; top:14px; left:50%; transform:translateX(-50%);
-    background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.12);
-    border-radius:999px; padding:8px 14px; font-size:14px;
+  .topBanner{position:absolute;top:14px;left:50%;transform:translateX(-50%);
+    background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);
+    border-radius:999px;padding:8px 14px;font-size:14px;
     box-shadow:0 10px 30px rgba(0,0,0,.25);
-    pointer-events:none; max-width:min(720px, calc(100% - 180px));
-    text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; z-index:5;
+    pointer-events:none;max-width:min(720px, calc(100% - 180px));
+    text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:5;
   }
-  .hud{position:absolute; top:14px; right:14px; display:flex; gap:10px; align-items:center; z-index:6;}
-  .lamp{width:38px; height:38px; border-radius:50%; border:1px solid rgba(255,255,255,.14);
-    background:rgba(255,255,255,.14); display:grid; place-items:center; cursor:pointer; user-select:none;
+  .hud{position:absolute;top:14px;right:14px;display:flex;gap:10px;align-items:center;z-index:6;}
+  .lamp{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.14);display:grid;place-items:center;cursor:pointer;user-select:none;
     box-shadow:0 10px 30px rgba(0,0,0,.25);
   }
-  .count{background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12); padding:6px 10px; border-radius:999px;
-    font-size:13px; min-width:52px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.25);
+  .count{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.12);padding:6px 10px;border-radius:999px;
+    font-size:13px;min-width:52px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);
   }
-  .sprite{position:absolute; left:0; top:0; transform:translate3d(-9999px,-9999px,0);
-    cursor:pointer; user-select:none; -webkit-user-drag:none; will-change:transform,opacity,filter; z-index:4;
+  .sprite{position:absolute;left:0;top:0;transform:translate3d(-9999px,-9999px,0) translate(-50%,-50%);
+    cursor:pointer;user-select:none;-webkit-user-drag:none;will-change:transform,opacity,filter;z-index:4;
   }
 
   .anim-none{opacity:1;}
   .anim-pop{animation:popIn var(--dur) ease-out both;}
-  @keyframes popIn{from{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(.6); opacity:0;}
-                   to{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1); opacity:1;}}
+  @keyframes popIn{
+    from{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(.6);opacity:0;}
+    to  {transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1);opacity:1;}
+  }
   .anim-fade{animation:fadeIn var(--dur) ease-out both;}
-  @keyframes fadeIn{from{opacity:0;} to{opacity:1;}}
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
   .anim-soft{animation:softIn var(--dur) ease-out both;}
-  @keyframes softIn{from{opacity:0; filter:blur(6px);} to{opacity:1; filter:blur(0);}}
+  @keyframes softIn{from{opacity:0;filter:blur(6px);}to{opacity:1;filter:blur(0);}}
   .pulseHint{animation:pulse 700ms ease-in-out 0s 3;}
-  @keyframes pulse{0%,100%{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1);}
-                   50%{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1.15);}}
+  @keyframes pulse{
+    0%,100%{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1);}
+    50%{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1.15);}
+  }
 </style>
 </head>
 
@@ -81,11 +84,8 @@
     <div class="field">
       <label>URL картинки персонажа (можно оставить пустым)</label>
       <input id="imgUrl" placeholder="https://.../image.png">
-      <div class="hint">
-        Если пусто — берём из репозитория:
-        <b>https://propodgotovkaa-creator.github.io/babochka_2/babushka_2.png</b>
-      </div>
-      <div class="warn" id="imgWarn">⚠️ Картинка не загрузилась. Проверь URL/имя файла в репозитории.</div>
+      <div class="hint">Если пусто — берём: <b>.../babushka_2.png</b> из репозитория.</div>
+      <div class="warn" id="imgWarn">⚠️ Картинка не загрузилась. Проверь URL/имя файла.</div>
     </div>
 
     <div class="row">
@@ -140,11 +140,11 @@
     <div class="row">
       <div class="field">
         <label>Зона стрелок слева/справа (px)</label>
-        <input type="number" id="arrowW" min="60" max="340" value="140">
+        <input type="number" id="arrowW" min="60" max="340" value="160">
       </div>
       <div class="field">
         <label>Высота зоны стрелок (px)</label>
-        <input type="number" id="arrowH" min="120" max="600" value="260">
+        <input type="number" id="arrowH" min="120" max="600" value="300">
       </div>
     </div>
 
@@ -156,7 +156,7 @@
       </div>
       <div class="field">
         <label>&nbsp;</label>
-        <div class="hint">В этом редакторе виджет устойчив к fullscreen/стрелкам.</div>
+        <div class="hint">Теперь лампа/счётчик — реальная запретная зона, не “примерная”.</div>
       </div>
     </div>
 
@@ -174,7 +174,7 @@
 
   <div class="stage" id="stage">
     <div class="topBanner" id="banner">Найди бабочку и нажми на неё!</div>
-    <div class="hud">
+    <div class="hud" id="hud">
       <div class="lamp" id="lamp" title="Подсказка">💡</div>
       <div class="count" id="count">0/8</div>
     </div>
@@ -197,6 +197,7 @@
   const stage = $("stage");
   const sprite = $("sprite");
   const banner = $("banner");
+  const hud    = $("hud");
   const count  = $("count");
   const lamp   = $("lamp");
   const imgWarn = $("imgWarn");
@@ -226,13 +227,13 @@
     return cfg;
   }
 
-  function applyAnim(el, cfg){
-    el.style.setProperty("--dur", Math.max(0,cfg.dur)+"ms");
+  function applyAnim(el, c){
+    el.style.setProperty("--dur", Math.max(0,c.dur)+"ms");
     el.classList.remove("anim-none","anim-pop","anim-fade","anim-soft");
-    if(cfg.anim==="none") el.classList.add("anim-none");
-    if(cfg.anim==="pop")  el.classList.add("anim-pop");
-    if(cfg.anim==="fade") el.classList.add("anim-fade");
-    if(cfg.anim==="soft") el.classList.add("anim-soft");
+    if(c.anim==="none") el.classList.add("anim-none");
+    if(c.anim==="pop")  el.classList.add("anim-pop");
+    if(c.anim==="fade") el.classList.add("anim-fade");
+    if(c.anim==="soft") el.classList.add("anim-soft");
   }
 
   function updateUI(){
@@ -269,7 +270,20 @@
     return false;
   }
 
-  // ---------- генерация виджета для Genially (устойчивый к fullscreen/стрелкам) ----------
+  // превью (просто)
+  function placePreview(){
+    const r = stage.getBoundingClientRect();
+    const w = Math.max(1,r.width), h=Math.max(1,r.height);
+    const half = Math.max(10,cfg.size)/2;
+    const edge = Math.max(cfg.pad, 16, Math.round(cfg.size*0.25));
+    const x = edge+half + Math.random()*Math.max(1, w-(edge+half)*2);
+    const y = edge+half + Math.random()*Math.max(1, h-(edge+half)*2);
+    sprite.style.setProperty('--tx', x+'px');
+    sprite.style.setProperty('--ty', y+'px');
+    sprite.style.transform = 'translate3d(var(--tx),var(--ty),0) translate(-50%,-50%)';
+  }
+
+  // ---------- ВИДЖЕТ-КОД ДЛЯ GENIALLY ----------
   function buildWidgetCode(c){
     const cfgJson = JSON.stringify({
       imgUrl: c.imgUrl || "",
@@ -295,22 +309,28 @@
     #FX_ROOT .hud{position:absolute;top:14px;right:14px;display:flex;gap:10px;align-items:center;z-index:6;}
     #FX_ROOT .lamp{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.14);display:grid;place-items:center;cursor:pointer;user-select:none;box-shadow:0 10px 30px rgba(0,0,0,.25);}
     #FX_ROOT .count{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.12);padding:6px 10px;border-radius:999px;font-size:13px;color:rgba(255,255,255,.92);min-width:52px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);}
-    #FX_ROOT .sprite{position:absolute;left:0;top:0;transform:translate3d(-9999px,-9999px,0);cursor:pointer;user-select:none;-webkit-user-drag:none;will-change:transform,opacity,filter;z-index:4;}
+    #FX_ROOT .sprite{position:absolute;left:0;top:0;transform:translate3d(-9999px,-9999px,0) translate(-50%,-50%);cursor:pointer;user-select:none;-webkit-user-drag:none;will-change:transform,opacity,filter;z-index:4;}
+
     #FX_ROOT .anim-none{opacity:1;}
     #FX_ROOT .anim-pop{animation:popIn var(--dur) ease-out both;}
-    @keyframes popIn{from{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(.6);opacity:0;}
-                     to{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1);opacity:1;}}
+    @keyframes popIn{
+      from{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(.6);opacity:0;}
+      to  {transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1);opacity:1;}
+    }
     #FX_ROOT .anim-fade{animation:fadeIn var(--dur) ease-out both;}
     @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
     #FX_ROOT .anim-soft{animation:softIn var(--dur) ease-out both;}
     @keyframes softIn{from{opacity:0;filter:blur(6px);}to{opacity:1;filter:blur(0);}}
+
     #FX_ROOT .pulseHint{animation:pulse 700ms ease-in-out 0s 3;}
-    @keyframes pulse{0%,100%{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1);}
-                     50%{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1.15);}}
+    @keyframes pulse{
+      0%,100%{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1);}
+      50%{transform:translate3d(var(--tx),var(--ty),0) translate(-50%,-50%) scale(1.15);}
+    }
   </style>
 
   <div class="topBanner" id="fx_banner"></div>
-  <div class="hud">
+  <div class="hud" id="fx_hud">
     <div class="lamp" id="fx_lamp" title="Подсказка">💡</div>
     <div class="count" id="fx_count"></div>
   </div>
@@ -320,14 +340,15 @@
   (function(){
     const root   = document.getElementById('FX_ROOT');
     const banner = document.getElementById('fx_banner');
+    const hud    = document.getElementById('fx_hud');
     const count  = document.getElementById('fx_count');
     const lamp   = document.getElementById('fx_lamp');
     const sprite = document.getElementById('fx_sprite');
     const cfg = ${cfgJson};
 
     const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-    const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
     const intersects=(a,b)=>!(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h);
+    const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 
     let found = 0;
     let history = [];
@@ -335,57 +356,75 @@
     let cellCounts = new Map();
     let lastCell = null;
 
-    function space(){
+    function rectSafe(){
       const r = root.getBoundingClientRect();
       const lw = root.clientWidth || root.offsetWidth || 1;
-      const lh = root.clientHeight || root.offsetHeight || 1;
-      const sx = r.width / lw;
-      const sy = r.height / lh;
-      return {vw:Math.max(1,r.width), vh:Math.max(1,r.height), sx:(sx||1), sy:(sy||1)};
+      const lh = root.clientHeight|| root.offsetHeight|| 1;
+      const sx = (r.width  / lw) || 1;
+      const sy = (r.height / lh) || 1;
+      return {vw:Math.max(1,r.width), vh:Math.max(1,r.height), sx:(isFinite(sx)&&sx>0?sx:1), sy:(isFinite(sy)&&sy>0?sy:1), left:r.left, top:r.top};
+    }
+
+    function elToVisualRect(el){
+      if(!el) return null;
+      const rr = root.getBoundingClientRect();
+      const r  = el.getBoundingClientRect();
+      return {x:r.left-rr.left, y:r.top-rr.top, w:r.width, h:r.height};
     }
 
     function buildForbidden(vw,vh){
-      const p = clamp(cfg.pad||0, 0, 240);
-      const bannerH=92, bannerW=Math.min(760, vw-220), bannerX=(vw-bannerW)/2;
-      const logoX=0, logoY=vh-(cfg.logoH||90);
-      const aw=clamp(cfg.arrowW||140,60,340), ah=clamp(cfg.arrowH||260,120,600), arrowY=(vh-ah)/2;
-      const hudW=140, hudH=80, hudX=vw-hudW, hudY=0;
-      const padRect=(r)=>({x:r.x-p,y:r.y-p,w:r.w+p*2,h:r.h+p*2});
-      return [
-        padRect({x:bannerX,y:0,w:bannerW,h:bannerH}),
-        padRect({x:logoX,y:logoY,w:(cfg.logoW||190),h:(cfg.logoH||90)}),
-        padRect({x:0,y:arrowY,w:aw,h:ah}),
-        padRect({x:vw-aw,y:arrowY,w:aw,h:ah}),
-        padRect({x:hudX,y:hudY,w:hudW,h:hudH}),
-      ];
+      const pad = clamp(cfg.pad||0, 0, 240);
+      const padUI = 10;
+
+      const rects = [];
+
+      const b = elToVisualRect(banner);
+      const h = elToVisualRect(hud);
+
+      if(b) rects.push({x:b.x-padUI, y:b.y-padUI, w:b.w+padUI*2, h:b.h+padUI*2});
+      if(h) rects.push({x:h.x-padUI, y:h.y-padUI, w:h.w+padUI*2, h:h.h+padUI*2});
+
+      // Genially UI зоны (примерные, но настраиваемые)
+      const aw=clamp(cfg.arrowW||160,60,340), ah=clamp(cfg.arrowH||300,120,600), arrowY=(vh-ah)/2;
+      rects.push({x:0-pad, y:arrowY-pad, w:aw+pad*2, h:ah+pad*2});
+      rects.push({x:(vw-aw)-pad, y:arrowY-pad, w:aw+pad*2, h:ah+pad*2});
+
+      const logoW=clamp(cfg.logoW||190,60,340), logoH=clamp(cfg.logoH||90,40,240);
+      rects.push({x:0-pad, y:(vh-logoH)-pad, w:logoW+pad*2, h:logoH+pad*2});
+
+      return rects;
     }
 
     function pushHistory(pt){ history.unshift(pt); if(history.length>HISTORY_MAX) history.pop(); }
 
     function pick(vw,vh){
       const s = Math.max(10, cfg.size||46);
-      const half=s/2;
-      const p = clamp(cfg.pad||0, 0, 240);
+      const half = s/2;
 
-      const minX=p+half, minY=p+half;
-      const maxX=Math.max(minX, vw-p-half);
-      const maxY=Math.max(minY, vh-p-half);
+      // ✅ safe margin — чтобы НЕ залезала в углы/края
+      const edge = Math.max(clamp(cfg.pad||0,0,240), 16, Math.round(s*0.25));
+
+      const minX=edge+half, minY=edge+half;
+      const maxX=Math.max(minX, vw-edge-half);
+      const maxY=Math.max(minY, vh-edge-half);
 
       const forbid = buildForbidden(vw,vh);
-      const cols=6, rows=5, cellW=vw/cols, cellH=vh/rows;
 
+      const cols=6, rows=5, cellW=vw/cols, cellH=vh/rows;
       const lastPt = history[0]||null;
       const recent = history.slice(0,7);
 
       const key=(cx,cy)=>cx+','+cy;
       const getCount=(k)=>cellCounts.get(k)||0;
 
-      function ok(x,y){
+      function okCenter(x,y){
+        if(x<minX||x>maxX||y<minY||y>maxY) return false;
         const r={x:x-half,y:y-half,w:s,h:s};
-        for(const f of forbid) if(intersects(r,f)) return false;
+        for(const f of forbid){ if(intersects(r,f)) return false; }
         return true;
       }
 
+      // оценка ячеек: редкость + дальность от последних
       const cells=[];
       for(let cy=0;cy<rows;cy++) for(let cx=0;cx<cols;cx++){
         const k=key(cx,cy);
@@ -407,20 +446,30 @@
       for(const c of pool){ r-=Math.max(1,c.score); if(r<=0){chosen=c;break;} }
 
       const cellX0=chosen.cx*cellW, cellY0=chosen.cy*cellH;
-      const loX=clamp(cellX0+p+half,minX,maxX), hiX=clamp(cellX0+cellW-p-half,minX,maxX);
-      const loY=clamp(cellY0+p+half,minY,maxY), hiY=clamp(cellY0+cellH-p-half,minY,maxY);
+      const loX=clamp(cellX0+edge+half,minX,maxX), hiX=clamp(cellX0+cellW-edge-half,minX,maxX);
+      const loY=clamp(cellY0+edge+half,minY,maxY), hiY=clamp(cellY0+cellH-edge-half,minY,maxY);
 
-      const minDistFromLast = Math.max(s*1.05, 28);
+      const minDistFromLast = Math.max(s*1.15, 34);
 
       let best=null, bestScore=-Infinity;
-      for(let i=0;i<260;i++){
+      for(let i=0;i<420;i++){
         const x=loX+Math.random()*(hiX-loX);
         const y=loY+Math.random()*(hiY-loY);
-        if(!ok(x,y)) continue;
+        if(!okCenter(x,y)) continue;
         if(lastPt && dist({x,y}, lastPt) < minDistFromLast) continue;
+
         let dSum=0; for(let k=0;k<recent.length;k++) dSum += dist({x,y}, recent[k])*(k===0?1:0.35);
-        const sc=dSum+Math.random()*70;
+        const sc=dSum+Math.random()*80;
         if(sc>bestScore){bestScore=sc;best={x,y};}
+      }
+
+      if(!best){
+        // fallback: общий поиск
+        for(let i=0;i<900;i++){
+          const x=minX+Math.random()*(maxX-minX);
+          const y=minY+Math.random()*(maxY-minY);
+          if(okCenter(x,y)){best={x,y};break;}
+        }
       }
       if(!best) best={x:minX,y:minY};
 
@@ -467,27 +516,54 @@
     }
 
     function placeOnce(){
-      const sp = space();
-      if(sp.vw < 200 || sp.vh < 150) return;
+      const sp = rectSafe();
+      if(sp.vw < 200 || sp.vh < 150) return false;
 
       const ptV = pick(sp.vw, sp.vh);
 
-      // перевод visual -> layout (чтобы transform:scale не уводил)
+      // visual -> layout (устойчиво при scale)
       const lx = ptV.x / sp.sx;
       const ly = ptV.y / sp.sy;
 
       sprite.style.setProperty('--tx', lx+'px');
       sprite.style.setProperty('--ty', ly+'px');
       sprite.style.transform = 'translate3d(var(--tx),var(--ty),0) translate(-50%,-50%)';
+      return true;
+    }
+
+    function isVisibleAndSafe(){
+      const rr = root.getBoundingClientRect();
+      const sr = sprite.getBoundingClientRect();
+      const outside = (sr.right < rr.left+6 || sr.left > rr.right-6 || sr.bottom < rr.top+6 || sr.top > rr.bottom-6);
+      if(outside) return false;
+
+      // не пересекаться с hud/banner (фактическими)
+      const sp = rectSafe();
+      const forbid = buildForbidden(sp.vw, sp.vh);
+
+      const cx = (sr.left + sr.width/2) - rr.left;
+      const cy = (sr.top  + sr.height/2) - rr.top;
+      const s  = Math.max(10, cfg.size||46);
+      const r  = {x:cx - s/2, y:cy - s/2, w:s, h:s};
+
+      for(const f of forbid){ if(intersects(r,f)) return false; }
+      return true;
     }
 
     function stabilize(){
-      placeOnce();
-      setTimeout(placeOnce, 80);
-      setTimeout(placeOnce, 180);
-      setTimeout(placeOnce, 360);
-      setTimeout(placeOnce, 640);
-      setTimeout(placeOnce, 1100);
+      // серия стабилизаций — Genially меняет размеры каскадом
+      const times = [0, 70, 150, 260, 420, 680, 1050];
+      times.forEach((t)=>{
+        setTimeout(()=>{
+          placeOnce();
+          // если всё равно не ок — ещё 1-2 попытки
+          let tries=0;
+          while(tries<6 && !isVisibleAndSafe()){
+            placeOnce();
+            tries++;
+          }
+        }, t);
+      });
     }
 
     function nextRound(){
@@ -498,8 +574,8 @@
       }
       sprite.style.display='';
       applyAnim();
-      stabilize();
       setTexts();
+      stabilize();
     }
 
     sprite.addEventListener('click', ()=>{
@@ -515,6 +591,7 @@
       sprite.classList.add('pulseHint');
     });
 
+    // init
     setSize(); applyAnim(); setTexts();
     loadSprite().then(()=>{ stabilize(); });
 
@@ -523,15 +600,13 @@
       ro.observe(root);
     }
     window.addEventListener('resize', ()=>stabilize(), {passive:true});
+    document.addEventListener('fullscreenchange', ()=>stabilize());
 
-    // страховка: если Genially "переклеил" экран/слайды — вернём бабочку
+    // watchdog: если после клика/стрелок пропала — вернуть
     setInterval(()=>{
       if(sprite.style.display==='none') return;
-      const r = root.getBoundingClientRect();
-      const s = sprite.getBoundingClientRect();
-      const outside = (s.right < r.left+6 || s.left > r.right-6 || s.bottom < r.top+6 || s.top > r.bottom-6);
-      if(outside) stabilize();
-    }, 700);
+      if(!isVisibleAndSafe()) stabilize();
+    }, 650);
   })();
   <\/scr` + `ipt>
 </div>`;
@@ -554,18 +629,6 @@
     updateUI();
     await setSpriteSource();
     placePreview();
-  }
-
-  // превьюшная позиция (простая)
-  function placePreview(){
-    const r = stage.getBoundingClientRect();
-    const w = Math.max(1,r.width), h=Math.max(1,r.height);
-    const half = Math.max(10,cfg.size)/2;
-    const x = clamp(half + cfg.pad, 0, w) + Math.random()*(Math.max(1,w - (half+cfg.pad)*2));
-    const y = clamp(half + cfg.pad, 0, h) + Math.random()*(Math.max(1,h - (half+cfg.pad)*2));
-    sprite.style.setProperty('--tx', x+'px');
-    sprite.style.setProperty('--ty', y+'px');
-    sprite.style.transform = 'translate3d(var(--tx),var(--ty),0) translate(-50%,-50%)';
   }
 
   // UI events
