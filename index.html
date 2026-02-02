@@ -83,7 +83,7 @@
       <label>URL картинки персонажа (можно оставить пустым)</label>
       <input id="imgUrl" placeholder="https://.../image.png">
       <div class="hint">Если пусто — берём из твоего GitHub Pages (перебор вариантов имени/расширения).</div>
-      <div class="warn" id="imgWarn">⚠️ Картинка не загрузилась (проверяй имя файла в репо).</div>
+      <div class="warn" id="imgWarn">⚠️ Картинка не загрузилась (проверь имя файла в репо).</div>
     </div>
 
     <div class="row">
@@ -154,7 +154,7 @@
       </div>
       <div class="field">
         <label>&nbsp;</label>
-        <div class="hint">Этот генератор устойчив к Full Screen (Genially).</div>
+        <div class="hint">Эта версия делает ретраи позиционирования до 3 сек (full screen).</div>
       </div>
     </div>
 
@@ -190,7 +190,7 @@
     return {w:+m[1],h:+m[2]};
   };
 
-  // БАЗА твоего репо (абсолютно!) — НЕ относительные пути.
+  // ВАЖНО: абсолютная база (GitHub Pages), без относительных путей.
   const BASE = "https://propodgotovkaa-creator.github.io/babochka_2/";
   const DEFAULT_CANDIDATES = [
     BASE + "babushka_2",
@@ -200,15 +200,12 @@
     BASE + "babochka.png"
   ];
 
-  // fallback если вообще ничего не загрузилось
   const FALLBACK_SVG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" width="120" height="90" viewBox="0 0 120 90">
-      <g fill="none" stroke="none">
-        <path d="M60 50c-7-22-30-34-45-25-12 7-8 29 9 39 16 9 29 0 36-14z" fill="#7ee3ff"/>
-        <path d="M60 50c7-22 30-34 45-25 12 7 8 29-9 39-16 9-29 0-36-14z" fill="#7ee3ff"/>
-        <path d="M58 52c-2 10 2 22 2 22h4s4-12 2-22c-1-6-6-6-8 0z" fill="#0b1020"/>
-        <circle cx="60" cy="46" r="4" fill="#0b1020"/>
-      </g>
+      <path d="M60 50c-7-22-30-34-45-25-12 7-8 29 9 39 16 9 29 0 36-14z" fill="#7ee3ff"/>
+      <path d="M60 50c7-22 30-34 45-25 12 7 8 29-9 39-16 9-29 0-36-14z" fill="#7ee3ff"/>
+      <path d="M58 52c-2 10 2 22 2 22h4s4-12 2-22c-1-6-6-6-8 0z" fill="#0b1020"/>
+      <circle cx="60" cy="46" r="4" fill="#0b1020"/>
     </svg>
   `);
 
@@ -225,6 +222,9 @@
   let found = 0;
   let history = [];
   const HISTORY_MAX = 14;
+
+  // токен, чтобы не было гонок между ретраями разных раундов
+  let placeToken = 0;
 
   function readCfg(){
     const logo = parseBox($("logoBox").value, 200, 95);
@@ -294,22 +294,21 @@
     const s = Math.max(10, cfg.size||46);
     const half = s/2;
     const pad = clamp(cfg.pad||0, 0, 240);
-    const edge = Math.max(pad, 16, Math.round(s*0.30)); // чтобы не уходило в углы/за UI
-    const padUI = 12;
+
+    // 🔥 важный анти-угловой буфер: чтобы не залезало под лампу и в края
+    const edge = Math.max(pad, 22, Math.round(s*0.35));
+    const padUI = 14;
 
     const rects = [];
-
     const b = elRectLayout(banner, container, I);
     const h = elRectLayout(hud, container, I);
     if(b) rects.push({x:b.x-padUI, y:b.y-padUI, w:b.w+padUI*2, h:b.h+padUI*2});
     if(h) rects.push({x:h.x-padUI, y:h.y-padUI, w:h.w+padUI*2, h:h.h+padUI*2});
 
-    // стрелки слева/справа
     const aw=clamp(cfg.arrowW||170,60,340), ah=clamp(cfg.arrowH||320,120,600), arrowY=(I.lh-ah)/2;
     rects.push({x:-edge, y:arrowY-edge, w:aw+edge*2, h:ah+edge*2});
     rects.push({x:(I.lw-aw)-edge, y:arrowY-edge, w:aw+edge*2, h:ah+edge*2});
 
-    // лого Genially снизу слева
     const logoW=clamp(cfg.logoW||200,60,360), logoH=clamp(cfg.logoH||95,40,260);
     rects.push({x:-edge, y:(I.lh-logoH)-edge, w:logoW+edge*2, h:logoH+edge*2});
 
@@ -325,7 +324,7 @@
 
     const last = history[0] || null;
     const recent = history.slice(0,7);
-    const minDist = Math.max(s*1.2, 38);
+    const minDist = Math.max(s*1.3, 48);
 
     function ok(x,y){
       const r={x:x-half,y:y-half,w:s,h:s};
@@ -334,7 +333,7 @@
     }
 
     let best=null, bestScore=-Infinity;
-    for(let i=0;i<1200;i++){
+    for(let i=0;i<1400;i++){
       const x=minX + Math.random()*(maxX-minX);
       const y=minY + Math.random()*(maxY-minY);
       if(!ok(x,y)) continue;
@@ -342,21 +341,59 @@
 
       let d=0;
       for(let k=0;k<recent.length;k++) d += dist({x,y}, recent[k])*(k===0?1:0.35);
-      const sc = d + Math.random()*60;
+      const sc = d + Math.random()*70;
       if(sc>bestScore){bestScore=sc; best={x,y};}
     }
-    if(!best) best={x:minX,y:minY};
+
+    if(!best){
+      // безопасный центр
+      best = {x:(minX+maxX)/2, y:(minY+maxY)/2};
+    }
+
     pushHistory(best);
     return best;
   }
 
-  function placeNow(){
-    const r = stage.getBoundingClientRect();
-    if((stage.clientWidth||0) < 120 || (stage.clientHeight||0) < 120 || r.width < 120 || r.height < 120) return false;
+  function layoutReady(container){
+    const rr = container.getBoundingClientRect();
+    const w = container.clientWidth || rr.width || 0;
+    const h = container.clientHeight|| rr.height|| 0;
+    return (w>80 && h>80 && rr.width>80 && rr.height>80);
+  }
+
+  function placeOnce(){
+    if(!layoutReady(stage)) return false;
     const pt = pickPosition(stage);
     sprite.style.left = pt.x + "px";
     sprite.style.top  = pt.y + "px";
     return true;
+  }
+
+  // ✅ ГЛАВНЫЙ ФИКС: ретраи позиционирования до 3 секунд (fullscreen/дергание iframe)
+  function placeWithRetries(){
+    const token = ++placeToken;
+    const t0 = performance.now();
+
+    sprite.style.opacity = "0";
+    sprite.style.display = "";
+
+    const tick = ()=>{
+      if(token !== placeToken) return; // отмена старых циклов
+      const ok = placeOnce();
+      if(ok){
+        sprite.style.opacity = "1";
+        return;
+      }
+      if(performance.now() - t0 < 3000){
+        requestAnimationFrame(tick);
+      }else{
+        // финальный fallback — безопасный центр
+        sprite.style.left = "50%";
+        sprite.style.top  = "55%";
+        sprite.style.opacity = "1";
+      }
+    };
+    requestAnimationFrame(tick);
   }
 
   function candidatesFor(url){
@@ -395,27 +432,14 @@
     return true;
   }
 
-  // стабилизация при Fullscreen/перезагрузке iframe в Genially
-  function stabilize(){
-    const times=[0, 60, 140, 260, 420, 700, 1100];
-    times.forEach(t=>{
-      setTimeout(()=>{
-        if(sprite.style.display==="none") return;
-        let tries=0;
-        while(tries<10 && !placeNow()) tries++;
-      }, t);
-    });
-  }
-
   async function init(){
     found=0; history=[];
     updateUI();
     await ensureSpriteImg();
-    sprite.style.display="";
-    stabilize();
+    placeWithRetries();
   }
 
-  // Клик по бабочке
+  // клик по бабочке
   sprite.addEventListener("click", ()=>{
     found++;
     updateUI();
@@ -425,13 +449,12 @@
         banner.textContent = cfg.endText || "";
         return;
       }
-      sprite.style.display = "";
       applyAnim(sprite, cfg);
-      stabilize();
+      placeWithRetries();
     }, Math.max(0, cfg.pause|0));
   });
 
-  // Подсказка
+  // подсказка
   lamp.addEventListener("click", ()=>{
     sprite.classList.remove("pulseHint");
     void sprite.offsetWidth;
@@ -445,8 +468,7 @@
       found=0; history=[];
       updateUI();
       await ensureSpriteImg();
-      sprite.style.display="";
-      stabilize();
+      placeWithRetries();
     });
   });
 
@@ -454,11 +476,10 @@
     found=0; history=[];
     updateUI();
     await ensureSpriteImg();
-    sprite.style.display="";
-    stabilize();
+    placeWithRetries();
   });
 
-  // ----- Генерация виджета для Genially (БЕЗ fetch + БЕЗ относительных путей) -----
+  // ----- Генерация виджета для Genially -----
   function buildWidgetCode(c){
     const cfgJson = JSON.stringify({
       imgUrl: c.imgUrl || "",
@@ -493,7 +514,6 @@
     @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
     #FX_ROOT .anim-soft{animation:softIn var(--dur) ease-out both;}
     @keyframes softIn{from{opacity:0;filter:blur(6px);}to{opacity:1;filter:blur(0);}}
-
     #FX_ROOT .pulseHint{animation:pulse 700ms ease-in-out 0s 3;}
     @keyframes pulse{0%,100%{transform:translate(-50%,-50%) scale(1);}50%{transform:translate(-50%,-50%) scale(1.15);}}
   </style>
@@ -524,63 +544,64 @@
     );
 
     const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-    const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
     const intersects=(a,b)=>!(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h);
+    const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 
-    let found = 0;
-    let history = [];
-    const HISTORY_MAX = 14;
+    let found=0;
+    let history=[];
+    const HISTORY_MAX=14;
+    let placeToken=0;
 
     function stageInfo(){
-      const rr = root.getBoundingClientRect();
-      const lw = root.clientWidth || root.offsetWidth || 1;
-      const lh = root.clientHeight|| root.offsetHeight|| 1;
-      const sx = (rr.width  / lw) || 1;
-      const sy = (rr.height / lh) || 1;
-      return {lw,lh,sx:(sx>0?sx:1),sy:(sy>0?sy:1), rr};
+      const rr=root.getBoundingClientRect();
+      const lw=root.clientWidth||root.offsetWidth||1;
+      const lh=root.clientHeight||root.offsetHeight||1;
+      const sx=(rr.width/lw)||1;
+      const sy=(rr.height/lh)||1;
+      return {lw,lh,sx:(sx>0?sx:1),sy:(sy>0?sy:1),rr};
     }
-    function elRectLayout(el, I){
+    function elRectLayout(el,I){
       if(!el) return null;
-      const r  = el.getBoundingClientRect();
-      const xV = r.left - I.rr.left;
-      const yV = r.top  - I.rr.top;
-      return { x: xV / I.sx, y: yV / I.sy, w: r.width / I.sx, h: r.height / I.sy };
+      const r=el.getBoundingClientRect();
+      const xV=r.left-I.rr.left;
+      const yV=r.top -I.rr.top;
+      return {x:xV/I.sx,y:yV/I.sy,w:r.width/I.sx,h:r.height/I.sy};
     }
     function pushHistory(pt){ history.unshift(pt); if(history.length>HISTORY_MAX) history.pop(); }
 
     function forbiddenRects(){
-      const I = stageInfo();
-      const s = Math.max(10, cfg.size||46);
-      const half = s/2;
-      const pad = clamp(cfg.pad||0, 0, 240);
-      const edge = Math.max(pad, 16, Math.round(s*0.30));
-      const padUI = 12;
+      const I=stageInfo();
+      const s=Math.max(10,cfg.size||46);
+      const half=s/2;
+      const pad=clamp(cfg.pad||0,0,240);
+      const edge=Math.max(pad,22,Math.round(s*0.35));
+      const padUI=14;
 
-      const rects = [];
-      const b = elRectLayout(banner, I);
-      const h = elRectLayout(hud, I);
-      if(b) rects.push({x:b.x-padUI, y:b.y-padUI, w:b.w+padUI*2, h:b.h+padUI*2});
-      if(h) rects.push({x:h.x-padUI, y:h.y-padUI, w:h.w+padUI*2, h:h.h+padUI*2});
+      const rects=[];
+      const b=elRectLayout(banner,I);
+      const h=elRectLayout(hud,I);
+      if(b) rects.push({x:b.x-padUI,y:b.y-padUI,w:b.w+padUI*2,h:b.h+padUI*2});
+      if(h) rects.push({x:h.x-padUI,y:h.y-padUI,w:h.w+padUI*2,h:h.h+padUI*2});
 
       const aw=clamp(cfg.arrowW||170,60,340), ah=clamp(cfg.arrowH||320,120,600), arrowY=(I.lh-ah)/2;
-      rects.push({x:-edge, y:arrowY-edge, w:aw+edge*2, h:ah+edge*2});
-      rects.push({x:(I.lw-aw)-edge, y:arrowY-edge, w:aw+edge*2, h:ah+edge*2});
+      rects.push({x:-edge,y:arrowY-edge,w:aw+edge*2,h:ah+edge*2});
+      rects.push({x:(I.lw-aw)-edge,y:arrowY-edge,w:aw+edge*2,h:ah+edge*2});
 
       const logoW=clamp(cfg.logoW||200,60,360), logoH=clamp(cfg.logoH||95,40,260);
-      rects.push({x:-edge, y:(I.lh-logoH)-edge, w:logoW+edge*2, h:logoH+edge*2});
+      rects.push({x:-edge,y:(I.lh-logoH)-edge,w:logoW+edge*2,h:logoH+edge*2});
 
-      return {I, rects, edge, half, s};
+      return {I,rects,edge,half,s};
     }
 
     function pickPosition(){
-      const {I, rects, edge, half, s} = forbiddenRects();
+      const {I,rects,edge,half,s}=forbiddenRects();
       const minX=edge+half, minY=edge+half;
       const maxX=Math.max(minX, I.lw-edge-half);
       const maxY=Math.max(minY, I.lh-edge-half);
 
-      const last = history[0] || null;
-      const recent = history.slice(0,7);
-      const minDist = Math.max(s*1.2, 38);
+      const last=history[0]||null;
+      const recent=history.slice(0,7);
+      const minDist=Math.max(s*1.3,48);
 
       function ok(x,y){
         const r={x:x-half,y:y-half,w:s,h:s};
@@ -589,32 +610,56 @@
       }
 
       let best=null, bestScore=-Infinity;
-      for(let i=0;i<1200;i++){
-        const x=minX + Math.random()*(maxX-minX);
-        const y=minY + Math.random()*(maxY-minY);
+      for(let i=0;i<1400;i++){
+        const x=minX+Math.random()*(maxX-minX);
+        const y=minY+Math.random()*(maxY-minY);
         if(!ok(x,y)) continue;
-        if(last && dist({x,y}, last) < minDist) continue;
-
+        if(last && dist({x,y},last) < minDist) continue;
         let d=0;
-        for(let k=0;k<recent.length;k++) d += dist({x,y}, recent[k])*(k===0?1:0.35);
-        const sc = d + Math.random()*60;
-        if(sc>bestScore){bestScore=sc; best={x,y};}
+        for(let k=0;k<recent.length;k++) d += dist({x,y},recent[k])*(k===0?1:0.35);
+        const sc=d+Math.random()*70;
+        if(sc>bestScore){bestScore=sc;best={x,y};}
       }
-      if(!best) best={x:minX,y:minY};
+      if(!best) best={x:(minX+maxX)/2,y:(minY+maxY)/2};
       pushHistory(best);
       return best;
     }
 
-    function placeNow(){
-      const rr = root.getBoundingClientRect();
-      const w = root.clientWidth || rr.width || 0;
-      const h = root.clientHeight|| rr.height|| 0;
-      if(w<120 || h<120 || rr.width<120 || rr.height<120) return false;
+    function layoutReady(){
+      const rr=root.getBoundingClientRect();
+      const w=root.clientWidth||rr.width||0;
+      const h=root.clientHeight||rr.height||0;
+      return (w>80 && h>80 && rr.width>80 && rr.height>80);
+    }
 
-      const pt = pickPosition();
-      sprite.style.left = pt.x + 'px';
-      sprite.style.top  = pt.y + 'px';
+    function placeOnce(){
+      if(!layoutReady()) return false;
+      const pt=pickPosition();
+      sprite.style.left=pt.x+'px';
+      sprite.style.top =pt.y+'px';
       return true;
+    }
+
+    function placeWithRetries(){
+      const token=++placeToken;
+      const t0=performance.now();
+
+      sprite.style.opacity='0';
+      sprite.style.display='';
+
+      const tick=()=>{
+        if(token!==placeToken) return;
+        const ok=placeOnce();
+        if(ok){ sprite.style.opacity='1'; return; }
+        if(performance.now()-t0 < 3000){
+          requestAnimationFrame(tick);
+        }else{
+          sprite.style.left='50%';
+          sprite.style.top='55%';
+          sprite.style.opacity='1';
+        }
+      };
+      requestAnimationFrame(tick);
     }
 
     function applyAnim(){
@@ -660,24 +705,13 @@
     }
 
     async function ensureImg(){
-      const ok = await loadImgSequential(candidates());
+      const ok=await loadImgSequential(candidates());
       if(!ok){
         sprite.onload=null; sprite.onerror=null;
-        sprite.src = FALLBACK_SVG;
+        sprite.src=FALLBACK_SVG;
         return false;
       }
       return true;
-    }
-
-    function stabilize(){
-      const times=[0,60,140,260,420,700,1100];
-      times.forEach(t=>{
-        setTimeout(()=>{
-          if(sprite.style.display==='none') return;
-          let tries=0;
-          while(tries<10 && !placeNow()) tries++;
-        }, t);
-      });
     }
 
     sprite.addEventListener('click', ()=>{
@@ -689,9 +723,8 @@
           banner.textContent = cfg.endText||'';
           return;
         }
-        sprite.style.display='';
         applyAnim();
-        stabilize();
+        placeWithRetries();
         setTexts();
       }, Math.max(0, cfg.pause||0));
     });
@@ -700,29 +733,24 @@
       sprite.classList.remove('pulseHint'); void sprite.offsetWidth; sprite.classList.add('pulseHint');
     });
 
-    // init
     setSize(); applyAnim(); setTexts();
-    ensureImg().then(()=>{
-      sprite.style.display='';
-      stabilize();
-    });
+    ensureImg().then(()=>placeWithRetries());
 
     if('ResizeObserver' in window){
-      const ro=new ResizeObserver(()=>stabilize());
+      const ro=new ResizeObserver(()=>placeWithRetries());
       ro.observe(root);
     }
-    window.addEventListener('resize', ()=>stabilize(), {passive:true});
-    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) stabilize(); });
+    window.addEventListener('resize', ()=>placeWithRetries(), {passive:true});
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) placeWithRetries(); });
 
-    // watchdog
     setInterval(()=>{
       if(sprite.style.display==='none') return;
       const x=parseFloat(sprite.style.left)||0;
       const y=parseFloat(sprite.style.top)||0;
       const I=stageInfo();
-      if(!(x>0 && y>0 && x<I.lw+1 && y<I.lh+1)) stabilize();
-      if(sprite.naturalWidth===0) ensureImg().then(()=>stabilize());
-    }, 800);
+      if(!(x>0 && y>0 && x<I.lw+1 && y<I.lh+1)) placeWithRetries();
+      if(sprite.naturalWidth===0) ensureImg().then(()=>placeWithRetries());
+    }, 900);
   })();
   <\/scr` + `ipt>
 </div>`;
