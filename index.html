@@ -176,8 +176,11 @@
     <div class="field">
       <label>URL картинки персонажа (можно оставить пустым)</label>
       <input id="imgUrl" placeholder="https://.../image.png">
-      <div class="hint">Если пусто — берём локальный файл рядом с index.html: <b>babushka_2</b> или <b>babushka_2.png</b></div>
-      <div class="warn" id="imgWarn">⚠️ Картинка не загрузилась. Проверь URL или имя локального файла.</div>
+      <div class="hint">
+        Если поле пустое — используется готовая ссылка:
+        <b>https://propodgotovkaa-creator.github.io/babochka_2/babushka_2.png</b>
+      </div>
+      <div class="warn" id="imgWarn">⚠️ Картинка не загрузилась. Проверь URL.</div>
     </div>
 
     <div class="row">
@@ -285,6 +288,9 @@
     return {w:+m[1],h:+m[2]};
   };
 
+  // ✅ готовая ссылка (если imgUrl пустой)
+  const DEFAULT_SPRITE_URL = "https://propodgotovkaa-creator.github.io/babochka_2/babushka_2.png";
+
   const stage = $("stage");
   const sprite = $("sprite");
   const banner = $("banner");
@@ -295,7 +301,11 @@
   let cfg = {};
   let found = 0;
   let history = [];
-  const HISTORY_MAX = 12;
+  const HISTORY_MAX = 14;
+
+  // ✅ анти-чередование и равномерность покрытия
+  let cellCounts = new Map();  // "cx,cy" -> count
+  let lastCellKey = null;
 
   function readCfg(){
     const logo = parseBox($("logoBox").value, 170, 120);
@@ -370,6 +380,7 @@
     ];
   }
 
+  // ✅ ИСПРАВЛЕНО: хаотично, без "качелей" по 2 углам, минимум повторов
   function pickPosition(){
     const {w,h} = stageRect();
     const s = Math.max(10, cfg.size);
@@ -381,26 +392,15 @@
 
     const forbid = buildForbiddenRects();
 
-    const cols = 5, rows = 4;
+    const cols = 6, rows = 5;
     const cellW = w / cols;
     const cellH = h / rows;
 
-    const cellScore = [];
-    for(let cy=0; cy<rows; cy++){
-      for(let cx=0; cx<cols; cx++){
-        const c = {x:cx*cellW + cellW/2, y:cy*cellH + cellH/2};
-        let score = 0;
-        if(history.length){
-          const d0 = dist(c, history[0]);
-          const d1 = history[1] ? dist(c, history[1]) : d0;
-          score = d0*1.0 + d1*0.4 + Math.random()*50;
-        }else{
-          score = Math.random()*1000;
-        }
-        cellScore.push({cx,cy,score});
-      }
-    }
-    cellScore.sort((a,b)=>b.score-a.score);
+    const lastPt = history[0] || null;
+    const recent = history.slice(0, 6);
+
+    const key = (cx,cy)=>cx + "," + cy;
+    const getCount = (k)=>cellCounts.get(k) || 0;
 
     function ok(x,y){
       const r = {x, y, w:s, h:s};
@@ -410,40 +410,94 @@
       return true;
     }
 
-    for(const cs of cellScore){
-      const cellX0 = cs.cx * cellW;
-      const cellY0 = cs.cy * cellH;
+    // 1) оценка клеток + выбор "взвешенно случайно" среди ТОП
+    const cells = [];
+    for(let cy=0; cy<rows; cy++){
+      for(let cx=0; cx<cols; cx++){
+        const k = key(cx,cy);
+        const c = {x:cx*cellW + cellW/2, y:cy*cellH + cellH/2};
 
-      const loX = clamp(cellX0 + p, minX, maxX);
-      const hiX = clamp(cellX0 + cellW - p - s, minX, maxX);
-      const loY = clamp(cellY0 + p, minY, maxY);
-      const hiY = clamp(cellY0 + cellH - p - s, minY, maxY);
+        const rarity = 170 / (1 + getCount(k));             // равномерность по полю
+        const dLast  = lastPt ? dist(c, lastPt) : 200;      // не рядом с прошлой
+        let dRecent = 0;
+        for(const rp of recent) dRecent += dist(c, rp);
+        dRecent = recent.length ? dRecent / recent.length : 0;
 
-      if(hiX < loX || hiY < loY) continue;
+        const repeatPenalty = (k === lastCellKey) ? 260 : 0;
 
-      let best=null, bestScore=-Infinity;
-      for(let i=0;i<70;i++){
-        const x = loX + Math.random()*(hiX-loX);
-        const y = loY + Math.random()*(hiY-loY);
-        if(!ok(x,y)) continue;
-
-        let d=0;
-        for(let k=0;k<Math.min(history.length,6);k++){
-          d += dist({x,y}, history[k]) * (k===0?1:0.35);
-        }
-        const sc = d + Math.random()*30;
-        if(sc>bestScore){bestScore=sc; best={x,y};}
+        const score = rarity + dLast*1.05 + dRecent*0.35 + Math.random()*120 - repeatPenalty;
+        cells.push({cx,cy,k,score});
       }
-      if(best){pushHistory(best); return best;}
+    }
+    cells.sort((a,b)=>b.score-a.score);
+
+    const TOPK = Math.min(10, cells.length);
+    const pool = cells.slice(0, TOPK);
+
+    let sum = 0;
+    for(const c of pool) sum += Math.max(1, c.score);
+    let rr = Math.random() * sum;
+    let chosen = pool[0];
+    for(const c of pool){
+      rr -= Math.max(1, c.score);
+      if(rr <= 0){ chosen = c; break; }
     }
 
-    for(let i=0;i<600;i++){
-      const x = minX + Math.random()*(maxX-minX);
-      const y = minY + Math.random()*(maxY-minY);
-      if(ok(x,y)){const pt={x,y}; pushHistory(pt); return pt;}
+    // 2) точки внутри выбранной клетки
+    const cellX0 = chosen.cx * cellW;
+    const cellY0 = chosen.cy * cellH;
+
+    const loX = clamp(cellX0 + p, minX, maxX);
+    const hiX = clamp(cellX0 + cellW - p - s, minX, maxX);
+    const loY = clamp(cellY0 + p, minY, maxY);
+    const hiY = clamp(cellY0 + cellH - p - s, minY, maxY);
+
+    const minDistFromLast = Math.max(s*1.1, 26);
+
+    const cand = [];
+    const TRIES = 180;
+
+    for(let i=0;i<TRIES;i++){
+      const x = loX + Math.random()*(hiX-loX);
+      const y = loY + Math.random()*(hiY-loY);
+      if(!ok(x,y)) continue;
+      if(lastPt && dist({x,y}, lastPt) < minDistFromLast) continue;
+
+      let dSum = 0;
+      for(let k=0;k<recent.length;k++){
+        dSum += dist({x,y}, recent[k]) * (k===0 ? 1 : 0.35);
+      }
+      cand.push({x,y,score:dSum + Math.random()*60});
     }
 
-    const pt={x:minX,y:minY}; pushHistory(pt); return pt;
+    function globalFallback(){
+      for(let i=0;i<1200;i++){
+        const x = minX + Math.random()*(maxX-minX);
+        const y = minY + Math.random()*(maxY-minY);
+        if(!ok(x,y)) continue;
+        if(lastPt && dist({x,y}, lastPt) < minDistFromLast) continue;
+        return {x,y};
+      }
+      return {x:minX,y:minY};
+    }
+
+    let pt;
+    if(cand.length){
+      cand.sort((a,b)=>b.score-a.score);
+      const top = cand.slice(0, Math.min(6, cand.length));
+      const pick = top[Math.floor(Math.random()*top.length)];
+      pt = {x:pick.x, y:pick.y};
+    }else{
+      pt = globalFallback();
+    }
+
+    pushHistory(pt);
+
+    // статистика клетки
+    cellCounts.set(chosen.k, getCount(chosen.k) + 1);
+    lastCellKey = chosen.k;
+
+    return pt;
   }
 
   function setSpriteSize(){
@@ -469,8 +523,7 @@
 
   function candidates(){
     const u = (cfg.imgUrl||"").trim();
-    if(u) return [u];
-    return ["./babushka_2","./babushka_2.png","./babushka_2.webp","./babushka_2.jpg"];
+    return [u || DEFAULT_SPRITE_URL];
   }
 
   async function tryLoadFetch(url){
@@ -520,6 +573,7 @@
     updateUI();
     await setSpriteSource();
     found=0; history=[];
+    cellCounts.clear(); lastCellKey = null;
     sprite.style.display="";
     placeNow();
   }
@@ -563,6 +617,7 @@
 
   $("btnReset").addEventListener("click", async ()=>{
     found=0; history=[];
+    cellCounts.clear(); lastCellKey = null;
     updateUI();
     await setSpriteSource();
     sprite.style.display="";
@@ -573,6 +628,7 @@
     const c = readCfg();
     const cfgJson = JSON.stringify({
       imgUrl: c.imgUrl || "",
+      defaultUrl: DEFAULT_SPRITE_URL,   // ✅ готовая ссылка внутри виджета
       size: c.size,
       rounds: c.rounds,
       pad: c.pad,
@@ -624,9 +680,14 @@
     const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
     const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
     const cfg = ${cfgJson};
+
     let found = 0;
     let history = [];
-    const HISTORY_MAX = 12;
+    const HISTORY_MAX = 14;
+
+    // ✅ анти-чередование и равномерность покрытия
+    let cellCounts = new Map();
+    let lastCellKey = null;
 
     function rectWH(){ const r = root.getBoundingClientRect(); return {w:r.width,h:r.height}; }
     function intersects(a,b){ return !(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h); }
@@ -654,17 +715,16 @@
       const {w,h} = rectWH();
       const s = Math.max(10, cfg.size||46);
       const p = clamp(cfg.pad||0, 0, 240);
+
       const minX=p, minY=p, maxX=Math.max(minX,w-p-s), maxY=Math.max(minY,h-p-s);
       const forbid = buildForbiddenRects();
-      const cols=5, rows=4, cellW=w/cols, cellH=h/rows;
 
-      const cellScore=[];
-      for(let cy=0;cy<rows;cy++) for(let cx=0;cx<cols;cx++){
-        const c={x:cx*cellW+cellW/2,y:cy*cellH+cellH/2};
-        let score=history.length ? (dist(c,history[0])*1.0 + (history[1]?dist(c,history[1]):dist(c,history[0]))*0.4 + Math.random()*50) : Math.random()*1000;
-        cellScore.push({cx,cy,score});
-      }
-      cellScore.sort((a,b)=>b.score-a.score);
+      const cols=6, rows=5, cellW=w/cols, cellH=h/rows;
+      const lastPt = history[0] || null;
+      const recent = history.slice(0, 6);
+
+      const key=(cx,cy)=>cx+','+cy;
+      const getCount=(k)=>cellCounts.get(k)||0;
 
       function ok(x,y){
         const r={x,y,w:s,h:s};
@@ -672,30 +732,72 @@
         return true;
       }
 
-      for(const cs of cellScore){
-        const cellX0=cs.cx*cellW, cellY0=cs.cy*cellH;
-        const loX=clamp(cellX0+p,minX,maxX), hiX=clamp(cellX0+cellW-p-s,minX,maxX);
-        const loY=clamp(cellY0+p,minY,maxY), hiY=clamp(cellY0+cellH-p-s,minY,maxY);
-        if(hiX<loX||hiY<loY) continue;
+      const cells=[];
+      for(let cy=0;cy<rows;cy++) for(let cx=0;cx<cols;cx++){
+        const k=key(cx,cy);
+        const c={x:cx*cellW+cellW/2,y:cy*cellH+cellH/2};
 
-        let best=null, bestScore=-Infinity;
-        for(let i=0;i<70;i++){
-          const x=loX+Math.random()*(hiX-loX), y=loY+Math.random()*(hiY-loY);
+        const rarity = 170 / (1 + getCount(k));
+        const dLast  = lastPt ? dist(c,lastPt) : 200;
+        let dRecent=0; for(const rp of recent) dRecent += dist(c,rp);
+        dRecent = recent.length ? dRecent/recent.length : 0;
+
+        const repeatPenalty = (k===lastCellKey) ? 260 : 0;
+
+        const score = rarity + dLast*1.05 + dRecent*0.35 + Math.random()*120 - repeatPenalty;
+        cells.push({cx,cy,k,score});
+      }
+      cells.sort((a,b)=>b.score-a.score);
+
+      const TOPK=Math.min(10,cells.length);
+      const pool=cells.slice(0,TOPK);
+
+      let sum=0; for(const c of pool) sum += Math.max(1,c.score);
+      let rr=Math.random()*sum;
+      let chosen=pool[0];
+      for(const c of pool){ rr-=Math.max(1,c.score); if(rr<=0){chosen=c;break;} }
+
+      const cellX0=chosen.cx*cellW, cellY0=chosen.cy*cellH;
+      const loX=clamp(cellX0+p,minX,maxX), hiX=clamp(cellX0+cellW-p-s,minX,maxX);
+      const loY=clamp(cellY0+p,minY,maxY), hiY=clamp(cellY0+cellH-p-s,minY,maxY);
+
+      const minDistFromLast = Math.max(s*1.1, 26);
+
+      const cand=[];
+      for(let i=0;i<180;i++){
+        const x=loX+Math.random()*(hiX-loX), y=loY+Math.random()*(hiY-loY);
+        if(!ok(x,y)) continue;
+        if(lastPt && dist({x,y}, lastPt) < minDistFromLast) continue;
+
+        let dSum=0; for(let k=0;k<recent.length;k++) dSum += dist({x,y}, recent[k])*(k===0?1:0.35);
+        cand.push({x,y,score:dSum+Math.random()*60});
+      }
+
+      function globalFallback(){
+        for(let i=0;i<1200;i++){
+          const x=minX+Math.random()*(maxX-minX), y=minY+Math.random()*(maxY-minY);
           if(!ok(x,y)) continue;
-          let d=0; for(let k=0;k<Math.min(history.length,6);k++) d += dist({x,y}, history[k])*(k===0?1:0.35);
-          const sc=d+Math.random()*30;
-          if(sc>bestScore){bestScore=sc;best={x,y};}
+          if(lastPt && dist({x,y}, lastPt) < minDistFromLast) continue;
+          return {x,y};
         }
-        if(best){pushHistory(best);return best;}
+        return {x:minX,y:minY};
       }
 
-      for(let i=0;i<600;i++){
-        const x=minX+Math.random()*(maxX-minX), y=minY+Math.random()*(maxY-minY);
-        const r={x,y,w:s,h:s};
-        let okk=true; for(const f of forbid){ if(intersects(r,f)){okk=false;break;} }
-        if(okk){const pt={x,y};pushHistory(pt);return pt;}
+      let pt;
+      if(cand.length){
+        cand.sort((a,b)=>b.score-a.score);
+        const top=cand.slice(0, Math.min(6,cand.length));
+        const pick=top[Math.floor(Math.random()*top.length)];
+        pt={x:pick.x,y:pick.y};
+      }else{
+        pt=globalFallback();
       }
-      const pt={x:minX,y:minY};pushHistory(pt);return pt;
+
+      pushHistory(pt);
+      cellCounts.set(chosen.k, getCount(chosen.k)+1);
+      lastCellKey = chosen.k;
+
+      return pt;
     }
 
     function applyAnim(){
@@ -723,8 +825,7 @@
 
     function candidates(){
       const u=(cfg.imgUrl||'').trim();
-      if(u) return [u];
-      return ['./babushka_2','./babushka_2.png','./babushka_2.webp','./babushka_2.jpg'];
+      return [u || (cfg.defaultUrl||'')];
     }
 
     async function loadSprite(){
@@ -790,5 +891,7 @@
 
   init();
 })();
-</script> </body>
+</script>
+</body>
 </html>
+
