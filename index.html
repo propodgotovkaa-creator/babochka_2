@@ -178,7 +178,7 @@
       <input id="imgUrl" placeholder="https://.../image.png">
       <div class="hint">
         Если поле пустое — используется готовая ссылка:
-        <b>https://propodgotovkaa-creator.github.io/babochka_2/babushka_2.png</b>
+        <b>https://propodgotovkaa-creator.github.io/babochka_2/babushka_2</b>
       </div>
       <div class="warn" id="imgWarn">⚠️ Картинка не загрузилась. Проверь URL.</div>
     </div>
@@ -288,8 +288,8 @@
     return {w:+m[1],h:+m[2]};
   };
 
-  // ✅ готовая ссылка (если imgUrl пустой)
-  const DEFAULT_SPRITE_URL = "https://propodgotovkaa-creator.github.io/babochka_2/babushka_2.png";
+  // ✅ ВАЖНО: файл в репо называется "babushka_2" (без расширения)
+  const DEFAULT_SPRITE_URL = "https://propodgotovkaa-creator.github.io/babochka_2/babushka_2";
 
   const stage = $("stage");
   const sprite = $("sprite");
@@ -303,8 +303,7 @@
   let history = [];
   const HISTORY_MAX = 14;
 
-  // ✅ анти-чередование и равномерность покрытия
-  let cellCounts = new Map();  // "cx,cy" -> count
+  let cellCounts = new Map();
   let lastCellKey = null;
 
   function readCfg(){
@@ -351,28 +350,23 @@
     const {w,h} = stageRect();
     const p = clamp(cfg.pad, 0, 240);
 
-    // banner top center
     const bannerH = 92;
     const bannerW = Math.min(760, w - 220);
     const bannerX = (w - bannerW)/2;
-    const bannerY = 0;
 
-    // genially logo bottom-left
     const logoX = 0;
     const logoY = h - cfg.logoH;
 
-    // arrows left/right center
     const aw = clamp(cfg.arrowW, 60, 220);
     const ah = clamp(cfg.arrowH, 120, 360);
     const arrowY = (h - ah)/2;
 
-    // top-right HUD (lamp+counter)
     const hudW = 120, hudH = 70;
     const hudX = w - hudW, hudY = 0;
 
     const padRect = (r)=>({x:r.x - p, y:r.y - p, w:r.w + p*2, h:r.h + p*2});
     return [
-      padRect({x:bannerX,y:bannerY,w:bannerW,h:bannerH}),
+      padRect({x:bannerX,y:0,w:bannerW,h:bannerH}),
       padRect({x:logoX,y:logoY,w:cfg.logoW,h:cfg.logoH}),
       padRect({x:0,y:arrowY,w:aw,h:ah}),
       padRect({x:w-aw,y:arrowY,w:aw,h:ah}),
@@ -380,7 +374,6 @@
     ];
   }
 
-  // ✅ ИСПРАВЛЕНО: хаотично, без "качелей" по 2 углам, минимум повторов
   function pickPosition(){
     const {w,h} = stageRect();
     const s = Math.max(10, cfg.size);
@@ -410,15 +403,15 @@
       return true;
     }
 
-    // 1) оценка клеток + выбор "взвешенно случайно" среди ТОП
     const cells = [];
     for(let cy=0; cy<rows; cy++){
       for(let cx=0; cx<cols; cx++){
         const k = key(cx,cy);
         const c = {x:cx*cellW + cellW/2, y:cy*cellH + cellH/2};
 
-        const rarity = 170 / (1 + getCount(k));             // равномерность по полю
-        const dLast  = lastPt ? dist(c, lastPt) : 200;      // не рядом с прошлой
+        const rarity = 170 / (1 + getCount(k));
+        const dLast  = lastPt ? dist(c, lastPt) : 200;
+
         let dRecent = 0;
         for(const rp of recent) dRecent += dist(c, rp);
         dRecent = recent.length ? dRecent / recent.length : 0;
@@ -429,8 +422,8 @@
         cells.push({cx,cy,k,score});
       }
     }
-    cells.sort((a,b)=>b.score-a.score);
 
+    cells.sort((a,b)=>b.score-a.score);
     const TOPK = Math.min(10, cells.length);
     const pool = cells.slice(0, TOPK);
 
@@ -443,7 +436,6 @@
       if(rr <= 0){ chosen = c; break; }
     }
 
-    // 2) точки внутри выбранной клетки
     const cellX0 = chosen.cx * cellW;
     const cellY0 = chosen.cy * cellH;
 
@@ -455,9 +447,7 @@
     const minDistFromLast = Math.max(s*1.1, 26);
 
     const cand = [];
-    const TRIES = 180;
-
-    for(let i=0;i<TRIES;i++){
+    for(let i=0;i<180;i++){
       const x = loX + Math.random()*(hiX-loX);
       const y = loY + Math.random()*(hiY-loY);
       if(!ok(x,y)) continue;
@@ -492,8 +482,6 @@
     }
 
     pushHistory(pt);
-
-    // статистика клетки
     cellCounts.set(chosen.k, getCount(chosen.k) + 1);
     lastCellKey = chosen.k;
 
@@ -521,9 +509,19 @@
     sprite.style.transform = "translate(-50%,-50%)";
   }
 
+  // ✅ FIX: если imgUrl пустой — пробуем ИМЯ БЕЗ РАСШИРЕНИЯ + расширения
   function candidates(){
     const u = (cfg.imgUrl||"").trim();
-    return [u || DEFAULT_SPRITE_URL];
+    if(u) return [u];
+
+    const base = DEFAULT_SPRITE_URL;
+    return [
+      base,
+      base + ".png",
+      base + ".webp",
+      base + ".jpg",
+      base + ".svg",
+    ];
   }
 
   async function tryLoadFetch(url){
@@ -600,7 +598,6 @@
     sprite.classList.add("pulseHint");
   });
 
-  // UI events
   const inputs = ["imgUrl","size","rounds","pad","pause","anim","dur","task","endText","arrowW","arrowH","logoBox"];
   inputs.forEach(id=>{
     $(id).addEventListener("input", async ()=>{
@@ -628,7 +625,7 @@
     const c = readCfg();
     const cfgJson = JSON.stringify({
       imgUrl: c.imgUrl || "",
-      defaultUrl: DEFAULT_SPRITE_URL,   // ✅ готовая ссылка внутри виджета
+      defaultUrl: DEFAULT_SPRITE_URL,
       size: c.size,
       rounds: c.rounds,
       pad: c.pad,
@@ -685,7 +682,6 @@
     let history = [];
     const HISTORY_MAX = 14;
 
-    // ✅ анти-чередование и равномерность покрытия
     let cellCounts = new Map();
     let lastCellKey = null;
 
@@ -825,7 +821,9 @@
 
     function candidates(){
       const u=(cfg.imgUrl||'').trim();
-      return [u || (cfg.defaultUrl||'')];
+      if(u) return [u];
+      const base=(cfg.defaultUrl||'').trim();
+      return [base, base+'.png', base+'.webp', base+'.jpg', base+'.svg'].filter(Boolean);
     }
 
     async function loadSprite(){
@@ -894,4 +892,3 @@
 </script>
 </body>
 </html>
-
