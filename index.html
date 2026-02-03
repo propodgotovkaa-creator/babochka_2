@@ -33,7 +33,7 @@
   button.ghost{background:rgba(255,255,255,.10);}
   .codeBox{margin-top:10px;border:1px solid rgba(255,255,255,.10);border-radius:14px;background:rgba(0,0,0,.25);padding:10px;}
   .codeBox .cap{font-size:12px;color:var(--muted);margin:0 0 8px;}
-  #out{width:100%;min-height:220px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.35;white-space:pre;}
+  #out{width:100%;min-height:240px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.35;white-space:pre;}
   .hint{margin-top:8px;font-size:12px;color:var(--muted);}
   .warn{margin-top:8px;font-size:12px;color:#ffd27a;display:none;}
 
@@ -59,8 +59,12 @@
     position:absolute;left:0;top:0;transform:translate(-50%,-50%);
     cursor:pointer; user-select:none; -webkit-user-drag:none;
     will-change:left,top,opacity,filter;
-    z-index:5;
+    z-index:999999;
+    opacity:1;
+    transition:opacity 120ms ease;
   }
+
+  /* anim */
   .anim-none{opacity:1;}
   .anim-pop{animation:popIn var(--dur) ease-out both;}
   @keyframes popIn{from{transform:translate(-50%,-50%) scale(.6);opacity:0;}to{transform:translate(-50%,-50%) scale(1);opacity:1;}}
@@ -82,7 +86,7 @@
     <div class="field">
       <label>URL картинки персонажа (можно оставить пустым)</label>
       <input id="imgUrl" placeholder="https://.../image.png">
-      <div class="hint">Если пусто — берём из твоего GitHub Pages (перебор вариантов имени/расширения).</div>
+      <div class="hint">Если пусто — берём из GitHub Pages (перебор вариантов имени/расширения).</div>
       <div class="warn" id="imgWarn">⚠️ Картинка не загрузилась (проверь имя файла в репо).</div>
     </div>
 
@@ -154,7 +158,7 @@
       </div>
       <div class="field">
         <label>&nbsp;</label>
-        <div class="hint">Эта версия делает ретраи позиционирования до 3 сек (full screen).</div>
+        <div class="hint">fix-r3: без display:none (устойчиво в full screen).</div>
       </div>
     </div>
 
@@ -190,7 +194,6 @@
     return {w:+m[1],h:+m[2]};
   };
 
-  // ВАЖНО: абсолютная база (GitHub Pages), без относительных путей.
   const BASE = "https://propodgotovkaa-creator.github.io/babochka_2/";
   const DEFAULT_CANDIDATES = [
     BASE + "babushka_2",
@@ -209,22 +212,22 @@
     </svg>
   `);
 
-  const stage = $("stage");
+  const stage  = $("stage");
   const sprite = $("sprite");
   const banner = $("banner");
   const hud    = $("hud");
   const count  = $("count");
   const lamp   = $("lamp");
-  const imgWarn = $("imgWarn");
-  const out = $("out");
+  const imgWarn= $("imgWarn");
+  const out    = $("out");
 
   let cfg = {};
   let found = 0;
   let history = [];
   const HISTORY_MAX = 14;
 
-  // токен, чтобы не было гонок между ретраями разных раундов
   let placeToken = 0;
+  let roundToken = 0;
 
   function readCfg(){
     const logo = parseBox($("logoBox").value, 200, 95);
@@ -295,9 +298,8 @@
     const half = s/2;
     const pad = clamp(cfg.pad||0, 0, 240);
 
-    // 🔥 важный анти-угловой буфер: чтобы не залезало под лампу и в края
-    const edge = Math.max(pad, 22, Math.round(s*0.35));
-    const padUI = 14;
+    const edge = Math.max(pad, 26, Math.round(s*0.40));
+    const padUI = 16;
 
     const rects = [];
     const b = elRectLayout(banner, container, I);
@@ -324,7 +326,7 @@
 
     const last = history[0] || null;
     const recent = history.slice(0,7);
-    const minDist = Math.max(s*1.3, 48);
+    const minDist = Math.max(s*1.3, 52);
 
     function ok(x,y){
       const r={x:x-half,y:y-half,w:s,h:s};
@@ -333,7 +335,7 @@
     }
 
     let best=null, bestScore=-Infinity;
-    for(let i=0;i<1400;i++){
+    for(let i=0;i<1600;i++){
       const x=minX + Math.random()*(maxX-minX);
       const y=minY + Math.random()*(maxY-minY);
       if(!ok(x,y)) continue;
@@ -341,15 +343,11 @@
 
       let d=0;
       for(let k=0;k<recent.length;k++) d += dist({x,y}, recent[k])*(k===0?1:0.35);
-      const sc = d + Math.random()*70;
+      const sc = d + Math.random()*90;
       if(sc>bestScore){bestScore=sc; best={x,y};}
     }
 
-    if(!best){
-      // безопасный центр
-      best = {x:(minX+maxX)/2, y:(minY+maxY)/2};
-    }
-
+    if(!best) best = {x:(minX+maxX)/2, y:(minY+maxY)/2};
     pushHistory(best);
     return best;
   }
@@ -358,7 +356,7 @@
     const rr = container.getBoundingClientRect();
     const w = container.clientWidth || rr.width || 0;
     const h = container.clientHeight|| rr.height|| 0;
-    return (w>80 && h>80 && rr.width>80 && rr.height>80);
+    return (w>120 && h>120 && rr.width>120 && rr.height>120);
   }
 
   function placeOnce(){
@@ -369,31 +367,39 @@
     return true;
   }
 
-  // ✅ ГЛАВНЫЙ ФИКС: ретраи позиционирования до 3 секунд (fullscreen/дергание iframe)
+  function showSprite(){
+    sprite.style.opacity = "1";
+    sprite.style.pointerEvents = "auto";
+  }
+  function hideSprite(){
+    sprite.style.opacity = "0";
+    sprite.style.pointerEvents = "none";
+  }
+
   function placeWithRetries(){
     const token = ++placeToken;
     const t0 = performance.now();
 
+    // важно: НЕ display:none
+    showSprite();
     sprite.style.opacity = "0";
-    sprite.style.display = "";
 
     const tick = ()=>{
-      if(token !== placeToken) return; // отмена старых циклов
+      if(token !== placeToken) return;
       const ok = placeOnce();
       if(ok){
         sprite.style.opacity = "1";
         return;
       }
-      if(performance.now() - t0 < 3000){
-        requestAnimationFrame(tick);
+      if(performance.now() - t0 < 2500){
+        setTimeout(tick, 16);
       }else{
-        // финальный fallback — безопасный центр
         sprite.style.left = "50%";
         sprite.style.top  = "55%";
         sprite.style.opacity = "1";
       }
     };
-    requestAnimationFrame(tick);
+    tick();
   }
 
   function candidatesFor(url){
@@ -432,54 +438,61 @@
     return true;
   }
 
-  async function init(){
-    found=0; history=[];
-    updateUI();
-    await ensureSpriteImg();
+  function nextRound(){
+    if(found >= cfg.rounds){
+      banner.textContent = cfg.endText || "";
+      hideSprite();
+      return;
+    }
+    applyAnim(sprite, cfg);
     placeWithRetries();
+    count.textContent = `${found}/${cfg.rounds}`;
   }
 
-  // клик по бабочке
   sprite.addEventListener("click", ()=>{
+    const myRound = ++roundToken;
+
     found++;
-    updateUI();
-    sprite.style.display = "none";
+    count.textContent = `${found}/${cfg.rounds}`;
+
+    // прячем без display:none
+    hideSprite();
+
     setTimeout(async ()=>{
+      // если пока ждали был новый клик/сброс — игнорим старый таймер
+      if(myRound !== roundToken) return;
+
       if(found >= cfg.rounds){
         banner.textContent = cfg.endText || "";
         return;
       }
-      applyAnim(sprite, cfg);
-      placeWithRetries();
+      nextRound();
     }, Math.max(0, cfg.pause|0));
   });
 
-  // подсказка
   lamp.addEventListener("click", ()=>{
     sprite.classList.remove("pulseHint");
     void sprite.offsetWidth;
     sprite.classList.add("pulseHint");
   });
 
-  // UI events
   const inputs = ["imgUrl","size","rounds","pad","pause","anim","dur","task","endText","arrowW","arrowH","logoBox"];
   inputs.forEach(id=>{
     $(id).addEventListener("input", async ()=>{
-      found=0; history=[];
+      found=0; history=[]; roundToken++;
       updateUI();
       await ensureSpriteImg();
-      placeWithRetries();
+      nextRound();
     });
   });
 
   $("btnReset").addEventListener("click", async ()=>{
-    found=0; history=[];
+    found=0; history=[]; roundToken++;
     updateUI();
     await ensureSpriteImg();
-    placeWithRetries();
+    nextRound();
   });
 
-  // ----- Генерация виджета для Genially -----
   function buildWidgetCode(c){
     const cfgJson = JSON.stringify({
       imgUrl: c.imgUrl || "",
@@ -498,6 +511,7 @@
       logoH: c.logoH
     });
 
+    // ВАЖНО: в виджете тоже без display:none — тот же принцип
     return `<div id="FX_ROOT">
   <style>
     #FX_ROOT{position:relative;width:100%;height:100%;overflow:hidden;background:transparent;font-family:system-ui,-apple-system,Segoe UI,Roboto;}
@@ -505,8 +519,7 @@
     #FX_ROOT .hud{position:absolute;top:14px;right:14px;display:flex;gap:10px;align-items:center;z-index:2147483001;}
     #FX_ROOT .lamp{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.14);display:grid;place-items:center;cursor:pointer;user-select:none;box-shadow:0 10px 30px rgba(0,0,0,.25);}
     #FX_ROOT .count{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.12);padding:6px 10px;border-radius:999px;font-size:13px;color:rgba(255,255,255,.92);min-width:52px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);}
-    #FX_ROOT .sprite{position:absolute;left:0;top:0;transform:translate(-50%,-50%);cursor:pointer;user-select:none;-webkit-user-drag:none;will-change:left,top,opacity,filter;z-index:2147482999;}
-
+    #FX_ROOT .sprite{position:absolute;left:0;top:0;transform:translate(-50%,-50%);cursor:pointer;user-select:none;-webkit-user-drag:none;will-change:left,top,opacity,filter;z-index:2147482999;opacity:1;transition:opacity 120ms ease;}
     #FX_ROOT .anim-none{opacity:1;}
     #FX_ROOT .anim-pop{animation:popIn var(--dur) ease-out both;}
     @keyframes popIn{from{transform:translate(-50%,-50%) scale(.6);opacity:0;}to{transform:translate(-50%,-50%) scale(1);opacity:1;}}
@@ -551,6 +564,7 @@
     let history=[];
     const HISTORY_MAX=14;
     let placeToken=0;
+    let roundToken=0;
 
     function stageInfo(){
       const rr=root.getBoundingClientRect();
@@ -574,8 +588,8 @@
       const s=Math.max(10,cfg.size||46);
       const half=s/2;
       const pad=clamp(cfg.pad||0,0,240);
-      const edge=Math.max(pad,22,Math.round(s*0.35));
-      const padUI=14;
+      const edge=Math.max(pad,26,Math.round(s*0.40));
+      const padUI=16;
 
       const rects=[];
       const b=elRectLayout(banner,I);
@@ -601,7 +615,7 @@
 
       const last=history[0]||null;
       const recent=history.slice(0,7);
-      const minDist=Math.max(s*1.3,48);
+      const minDist=Math.max(s*1.3,52);
 
       function ok(x,y){
         const r={x:x-half,y:y-half,w:s,h:s};
@@ -609,15 +623,15 @@
         return true;
       }
 
-      let best=null, bestScore=-Infinity;
-      for(let i=0;i<1400;i++){
+      let best=null,bestScore=-Infinity;
+      for(let i=0;i<1600;i++){
         const x=minX+Math.random()*(maxX-minX);
         const y=minY+Math.random()*(maxY-minY);
         if(!ok(x,y)) continue;
         if(last && dist({x,y},last) < minDist) continue;
         let d=0;
         for(let k=0;k<recent.length;k++) d += dist({x,y},recent[k])*(k===0?1:0.35);
-        const sc=d+Math.random()*70;
+        const sc=d+Math.random()*90;
         if(sc>bestScore){bestScore=sc;best={x,y};}
       }
       if(!best) best={x:(minX+maxX)/2,y:(minY+maxY)/2};
@@ -629,7 +643,7 @@
       const rr=root.getBoundingClientRect();
       const w=root.clientWidth||rr.width||0;
       const h=root.clientHeight||rr.height||0;
-      return (w>80 && h>80 && rr.width>80 && rr.height>80);
+      return (w>120 && h>120 && rr.width>120 && rr.height>120);
     }
 
     function placeOnce(){
@@ -640,26 +654,29 @@
       return true;
     }
 
+    function show(){ sprite.style.opacity='1'; sprite.style.pointerEvents='auto'; }
+    function hide(){ sprite.style.opacity='0'; sprite.style.pointerEvents='none'; }
+
     function placeWithRetries(){
       const token=++placeToken;
       const t0=performance.now();
 
+      show();
       sprite.style.opacity='0';
-      sprite.style.display='';
 
       const tick=()=>{
         if(token!==placeToken) return;
         const ok=placeOnce();
         if(ok){ sprite.style.opacity='1'; return; }
-        if(performance.now()-t0 < 3000){
-          requestAnimationFrame(tick);
+        if(performance.now()-t0 < 2500){
+          setTimeout(tick,16);
         }else{
           sprite.style.left='50%';
-          sprite.style.top='55%';
+          sprite.style.top ='55%';
           sprite.style.opacity='1';
         }
       };
-      requestAnimationFrame(tick);
+      tick();
     }
 
     function applyAnim(){
@@ -714,18 +731,25 @@
       return true;
     }
 
-    sprite.addEventListener('click', ()=>{
-      found++;
-      sprite.style.display='none';
+    function nextRound(){
+      if(found >= (cfg.rounds||7)){
+        banner.textContent = cfg.endText||'';
+        hide();
+        return;
+      }
+      applyAnim();
+      placeWithRetries();
       setTexts();
+    }
+
+    sprite.addEventListener('click', ()=>{
+      const my=++roundToken;
+      found++;
+      setTexts();
+      hide();
       setTimeout(()=>{
-        if(found >= (cfg.rounds||7)){
-          banner.textContent = cfg.endText||'';
-          return;
-        }
-        applyAnim();
-        placeWithRetries();
-        setTexts();
+        if(my!==roundToken) return;
+        nextRound();
       }, Math.max(0, cfg.pause||0));
     });
 
@@ -734,7 +758,7 @@
     });
 
     setSize(); applyAnim(); setTexts();
-    ensureImg().then(()=>placeWithRetries());
+    ensureImg().then(()=>{ nextRound(); });
 
     if('ResizeObserver' in window){
       const ro=new ResizeObserver(()=>placeWithRetries());
@@ -744,13 +768,8 @@
     document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) placeWithRetries(); });
 
     setInterval(()=>{
-      if(sprite.style.display==='none') return;
-      const x=parseFloat(sprite.style.left)||0;
-      const y=parseFloat(sprite.style.top)||0;
-      const I=stageInfo();
-      if(!(x>0 && y>0 && x<I.lw+1 && y<I.lh+1)) placeWithRetries();
       if(sprite.naturalWidth===0) ensureImg().then(()=>placeWithRetries());
-    }, 900);
+    }, 1200);
   })();
   <\/scr` + `ipt>
 </div>`;
@@ -777,7 +796,19 @@
     await copyText(out.value);
   });
 
-  // init
+  async function init(){
+    found=0; history=[]; roundToken++;
+    updateUI();
+    await ensureSpriteImg();
+    nextRound();
+  }
+
+  lamp.addEventListener("click", ()=>{
+    sprite.classList.remove("pulseHint");
+    void sprite.offsetWidth;
+    sprite.classList.add("pulseHint");
+  });
+
   updateUI();
   init();
 })();
