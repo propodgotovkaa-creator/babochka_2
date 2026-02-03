@@ -157,7 +157,7 @@
       </div>
       <div class="field">
         <label>&nbsp;</label>
-        <div class="hint">fix-r4: новый seed на каждый старт игры (разные места каждый раз).</div>
+        <div class="hint">fix-r5: каждый новый запуск → новая траектория.</div>
       </div>
     </div>
 
@@ -193,27 +193,6 @@
     return {w:+m[1],h:+m[2]};
   };
 
-  // ===== RNG (крипто-seeded), чтобы разные места при каждом новом запуске =====
-  let __seed = 0x12345678 >>> 0;
-  function reseed(){
-    try{
-      const a = new Uint32Array(2);
-      (crypto && crypto.getRandomValues) ? crypto.getRandomValues(a) : (a[0]=Date.now()>>>0, a[1]=(performance.now()*1000)>>>0);
-      __seed = (a[0] ^ a[1] ^ (Date.now()>>>0) ^ ((performance.now()*1000)>>>0)) >>> 0;
-      if(__seed === 0) __seed = 0xA5A5A5A5;
-    }catch(e){
-      __seed = ((Date.now()>>>0) ^ ((performance.now()*1000)>>>0) ^ 0x9E3779B9) >>> 0;
-    }
-  }
-  function rand(){
-    // xorshift32
-    __seed ^= (__seed << 13) >>> 0;
-    __seed ^= (__seed >>> 17) >>> 0;
-    __seed ^= (__seed << 5) >>> 0;
-    return ((__seed >>> 0) / 4294967296);
-  }
-  reseed();
-
   const BASE = "https://propodgotovkaa-creator.github.io/babochka_2/";
   const DEFAULT_CANDIDATES = [
     BASE + "babushka_2",
@@ -222,6 +201,64 @@
     BASE + "babushka_2.svg",
     BASE + "babochka.png"
   ];
+
+  // ===== RNG (устойчивый, seed меняется при каждом запуске) =====
+  let __seed = 0x12345678 >>> 0;
+
+  function fnv1a32(str){
+    let h = 2166136261 >>> 0;
+    for(let i=0;i<str.length;i++){
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function bumpCounter(){
+    // главное: даже если время одинаковое — счётчик другой
+    try{
+      const k = "FX_SEED_COUNTER_v1";
+      const prev = (parseInt(localStorage.getItem(k) || "0", 10) >>> 0);
+      const next = ((prev + 1) >>> 0);
+      localStorage.setItem(k, String(next));
+      return next >>> 0;
+    }catch(e){
+      return (Date.now() >>> 0);
+    }
+  }
+
+  function reseed(tag){
+    let a0=0, a1=0;
+    try{
+      const a = new Uint32Array(2);
+      if(window.crypto && crypto.getRandomValues){
+        crypto.getRandomValues(a);
+        a0=a[0]>>>0; a1=a[1]>>>0;
+      }else{
+        a0 = (Math.floor(Math.random()*4294967296)>>>0);
+        a1 = ((Date.now()>>>0) ^ ((performance.now()*1000)>>>0))>>>0;
+      }
+    }catch(e){
+      a0 = (Date.now()>>>0);
+      a1 = ((performance.now()*1000)>>>0);
+    }
+
+    const c = bumpCounter();
+    const h = fnv1a32(String(location.href || "") + "|" + String(tag||"") + "|" + String(c));
+    __seed = (a0 ^ a1 ^ c ^ h ^ (Date.now()>>>0) ^ (((performance.now()*1000)>>>0))) >>> 0;
+    if(__seed === 0) __seed = 0xA5A5A5A5;
+  }
+
+  function rand(){
+    // xorshift32
+    __seed ^= (__seed << 13) >>> 0;
+    __seed ^= (__seed >>> 17) >>> 0;
+    __seed ^= (__seed << 5) >>> 0;
+    return ((__seed >>> 0) / 4294967296);
+  }
+
+  // seed на загрузку страницы
+  reseed("page-load");
 
   const FALLBACK_SVG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" width="120" height="90" viewBox="0 0 120 90">
@@ -337,6 +374,7 @@
     return {I, rects, edge, half, s};
   }
 
+  // ✅ теперь: выбираем случайно из TOP-K кандидатов (не “всегда лучший”)
   function pickPosition(container){
     const {I, rects, edge, half, s} = forbiddenRects(container);
 
@@ -354,8 +392,11 @@
       return true;
     }
 
-    let best=null, bestScore=-Infinity;
-    for(let i=0;i<1600;i++){
+    const cand = [];
+    const SAMPLES = 520;     // меньше “прилипание”
+    const TOP_K   = 14;      // случайный выбор из топа
+
+    for(let i=0;i<SAMPLES;i++){
       const x=minX + rand()*(maxX-minX);
       const y=minY + rand()*(maxY-minY);
       if(!ok(x,y)) continue;
@@ -363,11 +404,20 @@
 
       let d=0;
       for(let k=0;k<recent.length;k++) d += dist({x,y}, recent[k])*(k===0?1:0.35);
-      const sc = d + rand()*90;
-      if(sc>bestScore){bestScore=sc; best={x,y};}
+      const sc = d + rand()*45; // лёгкий шум
+      cand.push({x,y,sc});
     }
 
-    if(!best) best = {x:(minX+maxX)/2, y:(minY+maxY)/2};
+    let best;
+    if(cand.length){
+      cand.sort((a,b)=>b.sc-a.sc);
+      const k = Math.min(TOP_K, cand.length);
+      const idx = Math.floor(rand()*k);
+      best = {x:cand[idx].x, y:cand[idx].y};
+    }else{
+      best = {x:(minX+maxX)/2, y:(minY+maxY)/2};
+    }
+
     pushHistory(best);
     return best;
   }
@@ -468,7 +518,6 @@
     count.textContent = `${found}/${cfg.rounds}`;
   }
 
-  // ===== клик по бабочке =====
   sprite.addEventListener("click", ()=>{
     const myRound = ++roundToken;
 
@@ -478,7 +527,6 @@
 
     setTimeout(async ()=>{
       if(myRound !== roundToken) return;
-
       if(found >= cfg.rounds){
         banner.textContent = cfg.endText || "";
         return;
@@ -487,7 +535,6 @@
     }, Math.max(0, cfg.pause|0));
   });
 
-  // подсказка
   lamp.addEventListener("click", ()=>{
     sprite.classList.remove("pulseHint");
     void sprite.offsetWidth;
@@ -498,8 +545,9 @@
   const inputs = ["imgUrl","size","rounds","pad","pause","anim","dur","task","endText","arrowW","arrowH","logoBox"];
   inputs.forEach(id=>{
     $(id).addEventListener("input", async ()=>{
+      // новый запуск игры → новый seed + очищаем историю
       found=0; history=[]; roundToken++;
-      reseed(); // ✅ новый seed при каждом новом старте игры
+      reseed("ui-change:"+id);
       updateUI();
       await ensureSpriteImg();
       nextRound();
@@ -508,7 +556,7 @@
 
   $("btnReset").addEventListener("click", async ()=>{
     found=0; history=[]; roundToken++;
-    reseed(); // ✅ новый seed при сбросе
+    reseed("reset");
     updateUI();
     await ensureSpriteImg();
     nextRound();
@@ -533,6 +581,7 @@
       logoH: c.logoH
     });
 
+    // ВИДЖЕТ: тот же RNG+TOP-K логика (самодостаточно)
     return `<div id="FX_ROOT">
   <style>
     #FX_ROOT{position:relative;width:100%;height:100%;overflow:hidden;background:transparent;font-family:system-ui,-apple-system,Segoe UI,Roboto;}
@@ -569,25 +618,41 @@
     const sprite = document.getElementById('fx_sprite');
     const cfg = ${cfgJson};
 
-    // RNG (крипто-seeded) — новый seed на старт
-    let __seed = 0x12345678 >>> 0;
-    function reseed(){
+    function fnv1a32(str){
+      let h=2166136261>>>0;
+      for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); }
+      return h>>>0;
+    }
+    function bumpCounter(){
       try{
-        const a = new Uint32Array(2);
-        (crypto && crypto.getRandomValues) ? crypto.getRandomValues(a) : (a[0]=Date.now()>>>0, a[1]=(performance.now()*1000)>>>0);
-        __seed = (a[0] ^ a[1] ^ (Date.now()>>>0) ^ ((performance.now()*1000)>>>0)) >>> 0;
-        if(__seed === 0) __seed = 0xA5A5A5A5;
-      }catch(e){
-        __seed = ((Date.now()>>>0) ^ ((performance.now()*1000)>>>0) ^ 0x9E3779B9) >>> 0;
-      }
+        const k='FX_SEED_COUNTER_v1';
+        const prev=(parseInt(localStorage.getItem(k)||'0',10)>>>0);
+        const next=((prev+1)>>>0);
+        localStorage.setItem(k,String(next));
+        return next>>>0;
+      }catch(e){ return (Date.now()>>>0); }
+    }
+
+    let __seed=0x12345678>>>0;
+    function reseed(tag){
+      let a0=0,a1=0;
+      try{
+        const a=new Uint32Array(2);
+        if(window.crypto && crypto.getRandomValues){ crypto.getRandomValues(a); a0=a[0]>>>0; a1=a[1]>>>0; }
+        else { a0=(Math.floor(Math.random()*4294967296)>>>0); a1=((Date.now()>>>0)^((performance.now()*1000)>>>0))>>>0; }
+      }catch(e){ a0=(Date.now()>>>0); a1=((performance.now()*1000)>>>0); }
+      const c=bumpCounter();
+      const h=fnv1a32(String(location.href||'')+'|'+String(tag||'')+'|'+String(c));
+      __seed=(a0^a1^c^h^(Date.now()>>>0)^(((performance.now()*1000)>>>0)))>>>0;
+      if(__seed===0) __seed=0xA5A5A5A5;
     }
     function rand(){
-      __seed ^= (__seed << 13) >>> 0;
-      __seed ^= (__seed >>> 17) >>> 0;
-      __seed ^= (__seed << 5) >>> 0;
-      return ((__seed >>> 0) / 4294967296);
+      __seed^=(__seed<<13)>>>0;
+      __seed^=(__seed>>>17)>>>0;
+      __seed^=(__seed<<5)>>>0;
+      return ((__seed>>>0)/4294967296);
     }
-    reseed();
+    reseed('widget-start');
 
     const FALLBACK_SVG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
       '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="90" viewBox="0 0 120 90">' +
@@ -601,11 +666,9 @@
     const intersects=(a,b)=>!(a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h);
     const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 
-    let found=0;
-    let history=[];
+    let found=0, history=[];
     const HISTORY_MAX=14;
-    let placeToken=0;
-    let roundToken=0;
+    let placeToken=0, roundToken=0;
 
     function stageInfo(){
       const rr=root.getBoundingClientRect();
@@ -626,8 +689,7 @@
 
     function forbiddenRects(){
       const I=stageInfo();
-      const s=Math.max(10,cfg.size||46);
-      const half=s/2;
+      const s=Math.max(10,cfg.size||46), half=s/2;
       const pad=clamp(cfg.pad||0,0,240);
       const edge=Math.max(pad,26,Math.round(s*0.40));
       const padUI=16;
@@ -644,7 +706,6 @@
 
       const logoW=clamp(cfg.logoW||200,60,360), logoH=clamp(cfg.logoH||95,40,260);
       rects.push({x:-edge,y:(I.lh-logoH)-edge,w:logoW+edge*2,h:logoH+edge*2});
-
       return {I,rects,edge,half,s};
     }
 
@@ -664,18 +725,28 @@
         return true;
       }
 
-      let best=null,bestScore=-Infinity;
-      for(let i=0;i<1600;i++){
+      const cand=[];
+      const SAMPLES=520, TOP_K=14;
+      for(let i=0;i<SAMPLES;i++){
         const x=minX + rand()*(maxX-minX);
         const y=minY + rand()*(maxY-minY);
         if(!ok(x,y)) continue;
         if(last && dist({x,y},last) < minDist) continue;
         let d=0;
-        for(let k=0;k<recent.length;k++) d += dist({x,y},recent[k])*(k===0?1:0.35);
-        const sc=d + rand()*90;
-        if(sc>bestScore){bestScore=sc;best={x,y};}
+        for(let k=0;k<recent.length;k++) d += dist({x,y}, recent[k])*(k===0?1:0.35);
+        const sc=d + rand()*45;
+        cand.push({x,y,sc});
       }
-      if(!best) best={x:(minX+maxX)/2,y:(minY+maxY)/2};
+
+      let best;
+      if(cand.length){
+        cand.sort((a,b)=>b.sc-a.sc);
+        const k=Math.min(TOP_K,cand.length);
+        const idx=Math.floor(rand()*k);
+        best={x:cand[idx].x,y:cand[idx].y};
+      }else{
+        best={x:(minX+maxX)/2,y:(minY+maxY)/2};
+      }
       pushHistory(best);
       return best;
     }
@@ -686,6 +757,7 @@
       const h=root.clientHeight||rr.height||0;
       return (w>120 && h>120 && rr.width>120 && rr.height>120);
     }
+
     function placeOnce(){
       if(!layoutReady()) return false;
       const pt=pickPosition();
@@ -693,6 +765,7 @@
       sprite.style.top =pt.y+'px';
       return true;
     }
+
     function show(){ sprite.style.opacity='1'; sprite.style.pointerEvents='auto'; }
     function hide(){ sprite.style.opacity='0'; sprite.style.pointerEvents='none'; }
 
@@ -705,13 +778,8 @@
         if(token!==placeToken) return;
         const ok=placeOnce();
         if(ok){ sprite.style.opacity='1'; return; }
-        if(performance.now()-t0 < 2500){
-          setTimeout(tick,16);
-        }else{
-          sprite.style.left='50%';
-          sprite.style.top ='55%';
-          sprite.style.opacity='1';
-        }
+        if(performance.now()-t0 < 2500){ setTimeout(tick,16); }
+        else { sprite.style.left='50%'; sprite.style.top='55%'; sprite.style.opacity='1'; }
       };
       tick();
     }
@@ -731,14 +799,9 @@
       const u=(cfg.imgUrl||'').trim();
       if(u) return [u];
       const base=(cfg.base||'').trim();
-      return [
-        base+'babushka_2',
-        base+'babushka_2.png',
-        base+'babushka_2.webp',
-        base+'babushka_2.svg',
-        base+'babochka.png'
-      ];
+      return [ base+'babushka_2', base+'babushka_2.png', base+'babushka_2.webp', base+'babushka_2.svg', base+'babochka.png' ];
     }
+
     function loadImgSequential(list){
       return new Promise((resolve)=>{
         let i=0;
@@ -756,22 +819,15 @@
         tryNext();
       });
     }
+
     async function ensureImg(){
       const ok=await loadImgSequential(candidates());
-      if(!ok){
-        sprite.onload=null; sprite.onerror=null;
-        sprite.src=FALLBACK_SVG;
-        return false;
-      }
+      if(!ok){ sprite.onload=null; sprite.onerror=null; sprite.src=FALLBACK_SVG; return false; }
       return true;
     }
 
     function nextRound(){
-      if(found >= (cfg.rounds||7)){
-        banner.textContent = cfg.endText||'';
-        hide();
-        return;
-      }
+      if(found >= (cfg.rounds||7)){ banner.textContent=cfg.endText||''; hide(); return; }
       applyAnim();
       placeWithRetries();
       setTexts();
@@ -782,10 +838,7 @@
       found++;
       setTexts();
       hide();
-      setTimeout(()=>{
-        if(my!==roundToken) return;
-        nextRound();
-      }, Math.max(0, cfg.pause||0));
+      setTimeout(()=>{ if(my!==roundToken) return; nextRound(); }, Math.max(0, cfg.pause||0));
     });
 
     lamp.addEventListener('click', ()=>{
@@ -793,14 +846,14 @@
     });
 
     setSize(); applyAnim(); setTexts();
-    ensureImg().then(()=>{ nextRound(); });
+    ensureImg().then(()=>nextRound());
 
     if('ResizeObserver' in window){
       const ro=new ResizeObserver(()=>placeWithRetries());
       ro.observe(root);
     }
     window.addEventListener('resize', ()=>placeWithRetries(), {passive:true});
-    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) placeWithRetries(); });
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) { reseed('resume'); placeWithRetries(); } });
   })();
   <\/scr` + `ipt>
 </div>`;
@@ -829,17 +882,11 @@
 
   async function init(){
     found=0; history=[]; roundToken++;
-    reseed(); // ✅ новый seed при старте страницы
+    reseed("init");
     updateUI();
     await ensureSpriteImg();
     nextRound();
   }
-
-  lamp.addEventListener("click", ()=>{
-    sprite.classList.remove("pulseHint");
-    void sprite.offsetWidth;
-    sprite.classList.add("pulseHint");
-  });
 
   updateUI();
   init();
